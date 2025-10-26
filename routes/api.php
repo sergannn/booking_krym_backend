@@ -31,4 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings', [BookingController::class, 'store']);
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);
+
+    // Управление экскурсиями (админ)
+    Route::post('/excursions', [ExcursionController::class, 'store']);
 });
