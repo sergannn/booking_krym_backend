@@ -18,7 +18,7 @@ use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
 use MoonShine\UI\Fields\Textarea;
 use MoonShine\UI\Fields\Date;
-use MoonShine\UI\Fields\SwitchBoolean;
+use MoonShine\UI\Fields\Checkbox;
 use MoonShine\Contracts\UI\FieldContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Support\Enums\Color;
@@ -86,8 +86,7 @@ class ExcursionResource extends ModelResource
                         Text::make('Название', 'title')
                             ->required(),
                             
-                        Textarea::make('Описание', 'description')
-                            ->rows(4),
+                        Textarea::make('Описание', 'description'),
                             
                         Flex::make([
                             Date::make('Дата и время', 'date_time')
@@ -100,16 +99,14 @@ class ExcursionResource extends ModelResource
                                 ->required(),
                         ]),
                         
-                        SwitchBoolean::make('Активна', 'is_active')
+                        Checkbox::make('Активна', 'is_active')
                             ->default(true),
                     ]),
                 ])->icon('calendar'),
                 
                 Tab::make('Места в автобусе', [
                     HasMany::make('Места', 'busSeats', resource: BusSeatResource::class)
-                        ->creatable()
-                        ->showOnExport()
-                        ->hideOnIndex(),
+                        ->creatable(),
                 ]),
             ]),
         ];

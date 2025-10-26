@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\BusSeat;
 use App\Models\Excursion;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ExcursionController extends Controller
 {
@@ -50,32 +48,14 @@ class ExcursionController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-        $excursion = DB::transaction(function () use ($validated) {
-            $excursion = Excursion::create([
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'date_time' => $validated['date_time'],
-                'price' => $validated['price'],
-                'max_seats' => $validated['max_seats'],
-                'is_active' => $validated['is_active'] ?? true,
-            ]);
-
-            $now = now();
-            $seats = [];
-            for ($i = 1; $i <= $excursion->max_seats; $i++) {
-                $seats[] = [
-                    'excursion_id' => $excursion->id,
-                    'seat_number' => $i,
-                    'status' => 'available',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-
-            BusSeat::insert($seats);
-
-            return $excursion;
-        });
+        $excursion = Excursion::create([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'date_time' => $validated['date_time'],
+            'price' => $validated['price'],
+            'max_seats' => $validated['max_seats'],
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
 
         $excursion->load('busSeats');
 
