@@ -132,7 +132,21 @@ class UserController extends Controller
     public function roles()
     {
         try {
-            $roles = MoonshineUserRole::select('id', 'name')->get();
+            $roles = MoonshineUser::with('moonshineUserRole')
+                ->get()
+                ->map(function (MoonshineUser $user) {
+                    if (is_null($user->moonshine_user_role_id)) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $user->moonshine_user_role_id,
+                        'name' => $user->moonshineUserRole?->name ?? 'Unknown',
+                    ];
+                })
+                ->filter()
+                ->unique('id')
+                ->values();
 
             return response()->json([
                 'roles' => $roles,
