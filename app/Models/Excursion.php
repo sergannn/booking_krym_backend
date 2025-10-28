@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use MoonShine\Laravel\Models\MoonshineUser;
 
 class Excursion extends Model
 {
@@ -46,6 +48,40 @@ class Excursion extends Model
     public function busSeats(): HasMany
     {
         return $this->hasMany(BusSeat::class);
+    }
+
+    /**
+     * Связь с бронированиями
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Связь с назначенными пользователями (водители/гиды)
+     */
+    public function assignedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(MoonshineUser::class, 'excursion_user', 'excursion_id', 'user_id')
+            ->withPivot('role_in_excursion')
+            ->withTimestamps();
+    }
+
+    /**
+     * Назначенные водители
+     */
+    public function drivers(): BelongsToMany
+    {
+        return $this->assignedUsers()->wherePivot('role_in_excursion', 'driver');
+    }
+
+    /**
+     * Назначенные гиды
+     */
+    public function guides(): BelongsToMany
+    {
+        return $this->assignedUsers()->wherePivot('role_in_excursion', 'guide');
     }
 
     /**

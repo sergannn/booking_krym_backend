@@ -6,6 +6,8 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ExcursionController;
 use App\Http\Controllers\API\BookingController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\StopsController;
+use App\Http\Controllers\API\WalletController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,6 +24,10 @@ use App\Http\Controllers\API\UserController;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/excursions', [ExcursionController::class, 'index']);
 Route::get('/excursions/{id}', [ExcursionController::class, 'show']);
+
+// Остановки (публичные)
+Route::get('/stops', [StopsController::class, 'index']);
+Route::get('/excursions/{id}/stops', [StopsController::class, 'forExcursion']);
 
 // Управление пользователями (публичные)
 Route::post('/users', [UserController::class, 'store']);
@@ -52,4 +58,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Управление экскурсиями (админ)
     Route::post('/excursions', [ExcursionController::class, 'store']);
+    Route::post('/excursions/{id}/assign', [ExcursionController::class, 'assign']);
+    Route::delete('/excursions/{id}/assign/{user_id}', [ExcursionController::class, 'unassign']);
+    
+    // Кошелек и история продаж
+    Route::get('/users/{id}/wallet', [WalletController::class, 'show']);
+    Route::get('/users/{id}/sales', [WalletController::class, 'sales']);
+    
+    // Расписание водителя
+    Route::get('/users/{id}/assigned-excursions', function($id) {
+        return app(ExcursionController::class)->index(request()->merge(['assigned_to' => $id]));
+    });
 });
