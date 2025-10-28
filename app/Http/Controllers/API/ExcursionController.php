@@ -4,16 +4,34 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Excursion;
+use MoonShine\Laravel\Models\MoonshineUser;
 use Illuminate\Http\Request;
 
 class ExcursionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $excursions = Excursion::with('busSeats')
-            ->where('is_active', true)
-            ->orderBy('date_time', 'asc')
-            ->get();
+        $query = Excursion::with(['busSeats', 'assignedUsers']);
+        
+        // Фильтр по дате (только будущие экскурсии)
+        if ($request->has('from') && $request->from === 'today') {
+            $query->where('date_time', '>=', now()->startOfDay());
+        }
+        
+        // Включить прошедшие экскурсии для админов
+        if (!$request->has('include_past') || !$request->include_past) {
+            $query->where('date_time', '>=', now());
+        }
+        
+        // Фильтр по назначенному пользователю
+        if ($request->has('assigned_to')) {
+            $query->whereHas('assignedUsers', function($q) use ($request) {
+                $q->where('user_id', $request->assigned_to)
+                  ->where('role_in_excursion', $request->assigned_to);
+            });
+        }
+        
+        $excursions = $query->orderBy('date_time', 'asc')->get();
 
         return response()->json([
             'data' => $excursions->map(fn (Excursion $excursion) => $this->transformExcursion($excursion)),
@@ -22,7 +40,7 @@ class ExcursionController extends Controller
 
     public function show($id)
     {
-        $excursion = Excursion::with('busSeats')
+        $excursion = Excursion::with(['busSeats', 'assignedUsers'])
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -65,6 +83,63 @@ class ExcursionController extends Controller
         ], 201);
     }
 
+    /**
+     * Назначить пользователей на экскурсию
+     */
+    public function assign(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isSuperUser() && (int) $user->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для назначения сотрудников.');
+        }
+
+        $excursion = Excursion::findOrFail($id);
+
+        $validated = $request->validate([
+            'assignments' => 'required|array',
+            'assignments.*.user_id' => 'required|exists:moonshine_users,id',
+            'assignments.*.role_in_excursion' => 'required|in:driver,guide',
+        ]);
+
+        $assignedUsers = [];
+
+        foreach ($validated['assignments'] as $assignment) {
+            $excursion->assignedUsers()->syncWithoutDetaching([
+                $assignment['user_id'] => ['role_in_excursion' => $assignment['role_in_excursion']]
+            ]);
+            
+            $assignedUsers[] = [
+                'user_id' => $assignment['user_id'],
+                'role_in_excursion' => $assignment['role_in_excursion'],
+            ];
+        }
+
+        return response()->json([
+            'message' => 'Сотрудники назначены на экскурсию',
+            'assigned_users' => $assignedUsers,
+        ]);
+    }
+
+    /**
+     * Удалить назначение пользователя с экскурсии
+     */
+    public function unassign(Request $request, $id, $userId)
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isSuperUser() && (int) $user->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для отмены назначения сотрудников.');
+        }
+
+        $excursion = Excursion::findOrFail($id);
+        $excursion->assignedUsers()->detach($userId);
+
+        return response()->json([
+            'message' => 'Назначение отменено',
+        ]);
+    }
+
     private function transformExcursion(Excursion $excursion): array
     {
         return [
@@ -72,10 +147,20 @@ class ExcursionController extends Controller
             'title' => $excursion->title,
             'description' => $excursion->description,
             'date_time' => $excursion->date_time->toISOString(),
+            'date' => $excursion->date_time->format('Y-m-d'),
+            'time' => $excursion->date_time->format('H:i'),
             'price' => $excursion->price,
             'max_seats' => $excursion->max_seats,
             'booked_seats_count' => $excursion->booked_seats_count,
             'available_seats_count' => $excursion->available_seats_count,
+            'assigned_staff' => $excursion->assignedUsers->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role_in_excursion' => $user->pivot->role_in_excursion,
+                ];
+            }),
             'bus_seats' => $excursion->busSeats->map(function ($seat) {
                 return [
                     'id' => $seat->id,
