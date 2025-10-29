@@ -12,6 +12,7 @@ use MoonShine\UI\Components\Layout\Box;
 use MoonShine\UI\Fields\ID;
 use MoonShine\UI\Fields\Text;
 use MoonShine\UI\Fields\Email;
+use MoonShine\UI\Fields\Password;
 use MoonShine\Laravel\Fields\Relationships\BelongsTo;
 use MoonShine\Laravel\Models\MoonshineUserRole;
 use MoonShine\Contracts\UI\FieldContract;
@@ -63,6 +64,9 @@ class UserResource extends ModelResource
                 ID::make(),
                 Text::make('Имя', 'name')->required(),
                 Email::make('Email', 'email')->required(),
+                Password::make('Пароль', 'password')
+                    ->required()
+                    ->eye(),
                 BelongsTo::make('Роль', 'moonshineUserRole', resource: MoonShineUserRoleResource::class)
                     ->required(),
             ])
@@ -87,6 +91,25 @@ class UserResource extends ModelResource
      */
     protected function rules(mixed $item): array
     {
-        return [];
+        return [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:moonshine_users,email,' . ($item?->id ?? 'NULL'),
+            'password' => 'required|string|min:6',
+            'moonshine_user_role_id' => 'required|exists:moonshine_user_roles,id',
+        ];
+    }
+
+    protected function onCreating(Model $item): void
+    {
+        if ($item->password) {
+            $item->password = bcrypt($item->password);
+        }
+    }
+
+    protected function onUpdating(Model $item): void
+    {
+        if ($item->isDirty('password') && $item->password) {
+            $item->password = bcrypt($item->password);
+        }
     }
 }

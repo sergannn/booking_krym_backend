@@ -14,6 +14,9 @@ use App\MoonShine\Resources\MoonShineUserRoleResource;
 use App\MoonShine\Resources\ExcursionResource;
 use App\MoonShine\Resources\BusSeatResource;
 use App\MoonShine\Resources\UserResource;
+use App\MoonShine\Resources\BookingResource;
+use App\MoonShine\Resources\StopResource;
+use App\MoonShine\Resources\WalletTransactionResource;
 
 class MoonShineServiceProvider extends ServiceProvider
 {
@@ -29,6 +32,9 @@ class MoonShineServiceProvider extends ServiceProvider
                 UserResource::class,
                 ExcursionResource::class,
                 BusSeatResource::class,
+                BookingResource::class,
+                StopResource::class,
+                WalletTransactionResource::class,
                 MoonShineUserResource::class,
                 MoonShineUserRoleResource::class,
             ])
