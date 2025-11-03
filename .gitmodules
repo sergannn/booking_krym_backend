@@ -1,0 +1,3 @@
+[submodule "flutter_app"]
+	path = flutter_app
+	url = https://github.com/sergannn/booking_krym.git

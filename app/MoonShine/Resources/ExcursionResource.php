@@ -108,6 +108,11 @@ class ExcursionResource extends ModelResource
                     HasMany::make('Места', 'busSeats', resource: BusSeatResource::class)
                         ->creatable(),
                 ]),
+                
+                Tab::make('Назначенный персонал', [
+                    HasMany::make('Назначенные сотрудники', 'assignedUsers', resource: MoonShineUserResource::class)
+                        ->creatable(),
+                ]),
             ]),
         ];
     }

@@ -34,6 +34,9 @@ use App\MoonShine\Resources\ExcursionResource;
 use MoonShine\MenuManager\MenuItem;
 use App\MoonShine\Resources\BusSeatResource;
 use App\MoonShine\Resources\UserResource;
+use App\MoonShine\Resources\BookingResource;
+use App\MoonShine\Resources\StopResource;
+use App\MoonShine\Resources\WalletTransactionResource;
 
 final class MoonShineLayout extends AppLayout
 {
@@ -48,9 +51,12 @@ final class MoonShineLayout extends AppLayout
     {
         return [
             ...parent::menu(),
-            MenuItem::make('Excursions', ExcursionResource::class),
-            MenuItem::make('BusSeats', BusSeatResource::class),
-            MenuItem::make('Users', UserResource::class),
+            MenuItem::make('Экскурсии', ExcursionResource::class),
+            MenuItem::make('Бронирования', BookingResource::class),
+            MenuItem::make('Места в автобусе', BusSeatResource::class),
+            MenuItem::make('Остановки', StopResource::class),
+            MenuItem::make('Транзакции кошелька', WalletTransactionResource::class),
+            MenuItem::make('Пользователи', UserResource::class),
         ];
     }
 
