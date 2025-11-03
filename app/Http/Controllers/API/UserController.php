@@ -132,7 +132,21 @@ class UserController extends Controller
     public function roles()
     {
         try {
-            $roles = MoonshineUserRole::select('id', 'name')->get();
+            $roles = MoonshineUser::with('moonshineUserRole')
+                ->get()
+                ->map(function (MoonshineUser $user) {
+                    if (is_null($user->moonshine_user_role_id)) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $user->moonshine_user_role_id,
+                        'name' => $user->moonshineUserRole?->name ?? 'Unknown',
+                    ];
+                })
+                ->filter()
+                ->unique('id')
+                ->values();
 
             return response()->json([
                 'roles' => $roles,
@@ -146,39 +160,30 @@ class UserController extends Controller
         }
     }
     /**
- * Удалить пользователя
- *
- * @param int $id ID пользователя
- * @return \Illuminate\Http\JsonResponse
- */
-public function destroy($id)
-{
-    try {
-        // Находим пользователя и загружаем связанную роль
-        $user = MoonshineUser::with('moonshineUserRole')->findOrFail($id);
-        
-        // Удаляем пользователя
+     * Удалить пользователя
+     */
+    public function destroy(Request $request, $id)
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->id == $id) {
+            return response()->json([
+                'message' => 'Нельзя удалить текущего пользователя',
+            ], 422);
+        }
+
+        $user = MoonshineUser::findOrFail($id);
+
+        if ($user->isSuperUser()) {
+            return response()->json([
+                'message' => 'Нельзя удалить суперпользователя',
+            ], 403);
+        }
+
         $user->delete();
 
         return response()->json([
-            'message' => 'Пользователь успешно удален',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->moonshineUserRole?->name ?? 'Unknown'
-            ]
+            'message' => 'Пользователь удалён',
         ]);
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json([
-            'message' => 'Пользователь не найден'
-        ], 404);
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Ошибка при удалении пользователя',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 }

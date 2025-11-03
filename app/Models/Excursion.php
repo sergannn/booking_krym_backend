@@ -50,6 +50,11 @@ class Excursion extends Model
         return $this->hasMany(BusSeat::class);
     }
 
+    public function prices(): HasMany
+    {
+        return $this->hasMany(ExcursionPrice::class);
+    }
+
     /**
      * Связь с бронированиями
      */
@@ -123,5 +128,13 @@ class Excursion extends Model
         }
 
         BusSeat::insert($seats);
+    }
+
+    public function priceForType(string $passengerType): ?float
+    {
+        $price = $this->prices
+            ->firstWhere('passenger_type', $passengerType);
+
+        return $price?->price;
     }
 }
