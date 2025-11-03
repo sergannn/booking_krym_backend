@@ -11,7 +11,7 @@ class ExcursionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Excursion::with(['busSeats', 'assignedUsers']);
+        $query = Excursion::with(['busSeats', 'assignedUsers', 'prices']);
         
         // Фильтр по дате (только будущие экскурсии)
         if ($request->has('from') && $request->from === 'today') {
@@ -40,7 +40,7 @@ class ExcursionController extends Controller
 
     public function show($id)
     {
-        $excursion = Excursion::with(['busSeats', 'assignedUsers'])
+        $excursion = Excursion::with(['busSeats', 'assignedUsers', 'prices'])
             ->where('is_active', true)
             ->findOrFail($id);
 
@@ -75,7 +75,14 @@ class ExcursionController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
-        $excursion->load('busSeats');
+        foreach (['adult', 'child', 'senior', 'disabled'] as $type) {
+            $excursion->prices()->create([
+                'passenger_type' => $type,
+                'price' => $validated['price'],
+            ]);
+        }
+
+        $excursion->load(['busSeats', 'prices', 'assignedUsers']);
 
         return response()->json([
             'message' => 'Экскурсия создана',
@@ -170,6 +177,49 @@ class ExcursionController extends Controller
                     'booked_at' => $seat->booked_at?->toISOString(),
                 ];
             }),
+            'prices' => $excursion->prices->map(function ($price) {
+                return [
+                    'passenger_type' => $price->passenger_type,
+                    'price' => $price->price,
+                ];
+            })->values(),
         ];
+    }
+
+    public function updatePrices(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isSuperUser() && (int) $user->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для изменения цен.');
+        }
+
+        $validated = $request->validate([
+            'prices' => 'required|array',
+            'prices.adult' => 'required|numeric|min:0',
+            'prices.child' => 'required|numeric|min:0',
+            'prices.senior' => 'required|numeric|min:0',
+            'prices.disabled' => 'required|numeric|min:0',
+        ]);
+
+        $excursion = Excursion::with('prices')->findOrFail($id);
+
+        $types = ['adult', 'child', 'senior', 'disabled'];
+
+        foreach ($types as $type) {
+            $price = $validated['prices'][$type];
+
+            $excursion->prices()->updateOrCreate(
+                ['passenger_type' => $type],
+                ['price' => $price]
+            );
+        }
+
+        $excursion->refresh()->load(['busSeats', 'assignedUsers', 'prices']);
+
+        return response()->json([
+            'message' => 'Тарифы обновлены',
+            'data' => $this->transformExcursion($excursion),
+        ]);
     }
 }

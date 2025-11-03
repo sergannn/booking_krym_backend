@@ -159,4 +159,32 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Удалить пользователя
+     */
+    public function destroy(Request $request, $id)
+    {
+        $currentUser = $request->user();
+
+        if ($currentUser->id == $id) {
+            return response()->json([
+                'message' => 'Нельзя удалить текущего пользователя',
+            ], 422);
+        }
+
+        $user = MoonshineUser::findOrFail($id);
+
+        if ($user->isSuperUser()) {
+            return response()->json([
+                'message' => 'Нельзя удалить суперпользователя',
+            ], 403);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Пользователь удалён',
+        ]);
+    }
 }

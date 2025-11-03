@@ -19,14 +19,13 @@ class BookingController extends Controller
             'excursion_id' => 'required|exists:excursions,id',
             'seat_numbers' => 'required|array',
             'seat_numbers.*' => 'integer|min:1|max:100',
-            'price' => 'required|numeric|min:0',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
             'passenger_type' => 'required|in:adult,child,senior,disabled',
             'stop_id' => 'required|exists:stops,id',
         ]);
 
-        $excursion = Excursion::findOrFail($request->excursion_id);
+        $excursion = Excursion::with('prices')->findOrFail($request->excursion_id);
         $user = $request->user();
         
         // Проверяем, что экскурсия активна
@@ -35,6 +34,17 @@ class BookingController extends Controller
                 'excursion_id' => ['This excursion is not available for booking.'],
             ]);
         }
+
+        $tariff = $excursion->prices
+            ->firstWhere('passenger_type', $request->passenger_type);
+
+        if (! $tariff) {
+            throw ValidationException::withMessages([
+                'passenger_type' => ['Tariff for selected passenger type is not configured.'],
+            ]);
+        }
+
+        $pricePerSeat = $tariff->price;
 
         $bookedSeats = [];
         $bookings = [];
@@ -67,7 +77,7 @@ class BookingController extends Controller
                 'excursion_id' => $excursion->id,
                 'bus_seat_id' => $seat->id,
                 'booked_by' => $user->id,
-                'price' => $request->price,
+                'price' => $pricePerSeat,
                 'customer_name' => $request->customer_name,
                 'customer_phone' => $request->customer_phone,
                 'passenger_type' => $request->passenger_type,
@@ -79,7 +89,7 @@ class BookingController extends Controller
             WalletTransaction::create([
                 'user_id' => $user->id,
                 'booking_id' => $booking->id,
-                'amount' => $request->price,
+                'amount' => $pricePerSeat,
                 'description' => "Продажа места №{$seatNumber} на экскурсию '{$excursion->title}'",
             ]);
 
@@ -139,11 +149,26 @@ class BookingController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $booking = Booking::where('id', $id)
-            ->where('booked_by', auth()->id())
+        $booking = Booking::with(['excursion', 'busSeat'])
+            ->where('id', $id)
+            ->where('booked_by', $request->user()->id)
             ->firstOrFail();
+
+        $excursionDate = $booking->excursion?->date_time;
+        if ($excursionDate && $excursionDate->isFuture() && $excursionDate->diffInHours(now()) < 24) {
+            return response()->json([
+                'message' => 'Отмена невозможна менее чем за 24 часа до экскурсии.',
+            ], 422);
+        }
+
+        $reason = trim((string) $request->input('reason', ''));
+        if ($reason === '') {
+            return response()->json([
+                'message' => 'Укажите причину отмены.',
+            ], 422);
+        }
 
         $seat = $booking->busSeat;
         
@@ -156,10 +181,10 @@ class BookingController extends Controller
 
         // Создаем обратную транзакцию в кошельке
         WalletTransaction::create([
-            'user_id' => auth()->id(),
+            'user_id' => $request->user()->id,
             'booking_id' => $booking->id,
             'amount' => -$booking->price, // Отрицательная сумма для возврата
-            'description' => "Отмена бронирования места №{$seat->seat_number} на экскурсию '{$booking->excursion->title}'",
+            'description' => "Отмена бронирования места №{$seat->seat_number} на экскурсию '{$booking->excursion->title}'. Причина: {$reason}",
         ]);
 
         // Удаляем бронирование

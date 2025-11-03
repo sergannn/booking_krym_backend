@@ -60,10 +60,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/excursions', [ExcursionController::class, 'store']);
     Route::post('/excursions/{id}/assign', [ExcursionController::class, 'assign']);
     Route::delete('/excursions/{id}/assign/{user_id}', [ExcursionController::class, 'unassign']);
+    Route::put('/excursions/{id}/prices', [ExcursionController::class, 'updatePrices']);
     
     // Кошелек и история продаж
     Route::get('/users/{id}/wallet', [WalletController::class, 'show']);
     Route::get('/users/{id}/sales', [WalletController::class, 'sales']);
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
     
     // Расписание водителя
     Route::get('/users/{id}/assigned-excursions', function($id) {
