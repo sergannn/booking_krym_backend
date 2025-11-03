@@ -145,4 +145,40 @@ class UserController extends Controller
             ], 500);
         }
     }
+    /**
+ * Удалить пользователя
+ *
+ * @param int $id ID пользователя
+ * @return \Illuminate\Http\JsonResponse
+ */
+public function destroy($id)
+{
+    try {
+        // Находим пользователя и загружаем связанную роль
+        $user = MoonshineUser::with('moonshineUserRole')->findOrFail($id);
+        
+        // Удаляем пользователя
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Пользователь успешно удален',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->moonshineUserRole?->name ?? 'Unknown'
+            ]
+        ]);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json([
+            'message' => 'Пользователь не найден'
+        ], 404);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Ошибка при удалении пользователя',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

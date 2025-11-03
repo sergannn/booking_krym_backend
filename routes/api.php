@@ -30,10 +30,26 @@ Route::get('/stops', [StopsController::class, 'index']);
 Route::get('/excursions/{id}/stops', [StopsController::class, 'forExcursion']);
 
 // Управление пользователями (публичные)
+Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::post('/users', [UserController::class, 'store']);
 Route::get('/users/roles', [UserController::class, 'roles']);
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/users', [UserController::class, 'index']);
+
+// Flutter Web App redirect
+Route::get('/app', function() {
+    $flutterAppPath = public_path('flutter_app');
+    
+    if (file_exists($flutterAppPath . '/index.html')) {
+        return redirect('/flutter_app/');
+    }
+    
+    return response()->json([
+        'error' => 'Flutter app not built yet',
+        'message' => 'Please run: cd flutter_app && flutter build web',
+        'path' => $flutterAppPath
+    ], 404);
+});
 
 // Тестовый маршрут
 Route::get('/test', function() {
