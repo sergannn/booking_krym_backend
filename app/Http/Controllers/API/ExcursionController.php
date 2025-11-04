@@ -4,13 +4,20 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Excursion;
+use App\Services\ExcursionScheduler;
 use MoonShine\Laravel\Models\MoonshineUser;
 use Illuminate\Http\Request;
 
 class ExcursionController extends Controller
 {
+    public function __construct(private readonly ExcursionScheduler $scheduler)
+    {
+    }
+
     public function index(Request $request)
     {
+        $this->scheduler->ensureUpcoming();
+
         $query = Excursion::with(['busSeats', 'assignedUsers', 'prices']);
         
         // Фильтр по дате (только будущие экскурсии)
@@ -40,6 +47,8 @@ class ExcursionController extends Controller
 
     public function show($id)
     {
+        $this->scheduler->ensureUpcoming();
+
         $excursion = Excursion::with(['busSeats', 'assignedUsers', 'prices'])
             ->where('is_active', true)
             ->findOrFail($id);
