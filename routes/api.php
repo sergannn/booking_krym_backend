@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Кошелек и история продаж
     Route::get('/users/{id}/wallet', [WalletController::class, 'show']);
     Route::get('/users/{id}/sales', [WalletController::class, 'sales']);
+    Route::get('/users/{id}/profit', [WalletController::class, 'profit']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
     
     // Расписание водителя

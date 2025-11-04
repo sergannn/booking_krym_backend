@@ -88,6 +88,8 @@ class ExcursionController extends Controller
             $excursion->prices()->create([
                 'passenger_type' => $type,
                 'price' => $validated['price'],
+                'seller_commission_percent' => 10,
+                'partner_commission_percent' => 10,
             ]);
         }
 
@@ -190,6 +192,8 @@ class ExcursionController extends Controller
                 return [
                     'passenger_type' => $price->passenger_type,
                     'price' => $price->price,
+                    'seller_commission_percent' => $price->seller_commission_percent,
+                    'partner_commission_percent' => $price->partner_commission_percent,
                 ];
             })->values(),
         ];
@@ -205,10 +209,18 @@ class ExcursionController extends Controller
 
         $validated = $request->validate([
             'prices' => 'required|array',
-            'prices.adult' => 'required|numeric|min:0',
-            'prices.child' => 'required|numeric|min:0',
-            'prices.senior' => 'required|numeric|min:0',
-            'prices.disabled' => 'required|numeric|min:0',
+            'prices.adult.price' => 'required|numeric|min:0',
+            'prices.adult.seller_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.adult.partner_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.child.price' => 'required|numeric|min:0',
+            'prices.child.seller_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.child.partner_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.senior.price' => 'required|numeric|min:0',
+            'prices.senior.seller_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.senior.partner_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.disabled.price' => 'required|numeric|min:0',
+            'prices.disabled.seller_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.disabled.partner_commission_percent' => 'required|numeric|min:0|max:100',
         ]);
 
         $excursion = Excursion::with('prices')->findOrFail($id);
@@ -216,11 +228,15 @@ class ExcursionController extends Controller
         $types = ['adult', 'child', 'senior', 'disabled'];
 
         foreach ($types as $type) {
-            $price = $validated['prices'][$type];
+            $priceData = $request->input("prices.$type");
 
             $excursion->prices()->updateOrCreate(
                 ['passenger_type' => $type],
-                ['price' => $price]
+                [
+                    'price' => $priceData['price'],
+                    'seller_commission_percent' => $priceData['seller_commission_percent'],
+                    'partner_commission_percent' => $priceData['partner_commission_percent'],
+                ]
             );
         }
 

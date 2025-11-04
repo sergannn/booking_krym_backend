@@ -4,10 +4,26 @@ return [
     'default_days_ahead' => 15,
     'default_max_seats' => 50,
     'default_tariffs' => [
-        'adult' => 1500.0,
-        'child' => 1200.0,
-        'senior' => 1200.0,
-        'disabled' => 1200.0,
+        'adult' => [
+            'price' => 1500.0,
+            'seller_commission_percent' => 10.0,
+            'partner_commission_percent' => 10.0,
+        ],
+        'child' => [
+            'price' => 1200.0,
+            'seller_commission_percent' => 10.0,
+            'partner_commission_percent' => 10.0,
+        ],
+        'senior' => [
+            'price' => 1200.0,
+            'seller_commission_percent' => 10.0,
+            'partner_commission_percent' => 10.0,
+        ],
+        'disabled' => [
+            'price' => 1200.0,
+            'seller_commission_percent' => 10.0,
+            'partner_commission_percent' => 10.0,
+        ],
     ],
     'templates' => [
         [

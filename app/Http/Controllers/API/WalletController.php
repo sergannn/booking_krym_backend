@@ -94,4 +94,88 @@ class WalletController extends Controller
             })
         ]);
     }
+
+    /**
+     * Получить рассчитанную прибыль пользователя
+     */
+    public function profit($userId)
+    {
+        $user = MoonshineUser::with('moonshineUserRole')->findOrFail($userId);
+
+        $bookings = Booking::where('booked_by', $userId)
+            ->with(['excursion.prices'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $isPartner = (int) $user->moonshine_user_role_id === 4;
+
+        $totalProfit = 0;
+        $breakdown = [];
+        $totalsByType = [];
+
+        foreach ($bookings as $booking) {
+            $passengerType = $booking->passenger_type ?? 'adult';
+            $price = (float) $booking->price;
+
+            $priceRecord = optional($booking->excursion->prices)
+                ->firstWhere('passenger_type', $passengerType);
+
+            if ($priceRecord) {
+                $commissionPercent = $isPartner
+                    ? (float) $priceRecord->partner_commission_percent
+                    : (float) $priceRecord->seller_commission_percent;
+            } else {
+                $commissionPercent = $isPartner ? 0.0 : 10.0;
+            }
+
+            $commissionAmount = round($price * $commissionPercent / 100, 2);
+            $totalProfit += $commissionAmount;
+
+            if (! isset($totalsByType[$passengerType])) {
+                $totalsByType[$passengerType] = [
+                    'sales' => 0.0,
+                    'commission' => 0.0,
+                ];
+            }
+
+            $totalsByType[$passengerType]['sales'] += $price;
+            $totalsByType[$passengerType]['commission'] += $commissionAmount;
+
+            $breakdown[] = [
+                'booking_id' => $booking->id,
+                'excursion' => [
+                    'id' => $booking->excursion->id,
+                    'title' => $booking->excursion->title,
+                    'date_time' => $booking->excursion->date_time,
+                ],
+                'passenger_type' => $passengerType,
+                'price' => $price,
+                'commission_percent' => $commissionPercent,
+                'commission_amount' => $commissionAmount,
+                'booked_at' => $booking->booked_at,
+            ];
+        }
+
+        $formattedTotals = [];
+        foreach ($totalsByType as $type => $totals) {
+            $formattedTotals[$type] = [
+                'sales' => round($totals['sales'], 2),
+                'commission' => round($totals['commission'], 2),
+            ];
+        }
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role_id' => $user->moonshine_user_role_id,
+                'role' => $user->moonshineUserRole?->name,
+                'is_partner' => $isPartner,
+            ],
+            'total_profit' => round($totalProfit, 2),
+            'breakdown' => $breakdown,
+            'totals_by_type' => $formattedTotals,
+        ]);
+    }
 }

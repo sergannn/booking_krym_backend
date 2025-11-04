@@ -46,7 +46,10 @@ class ExcursionScheduler
                 DB::transaction(function () use ($template, $dateTime, $defaultMaxSeats, $defaultTariffs) {
                     $tariffs = Arr::get($template, 'tariffs', $defaultTariffs);
 
-                    $adultPrice = Arr::get($tariffs, 'adult', 0);
+                    $adultConfig = Arr::get($tariffs, 'adult', []);
+                    $adultPrice = is_array($adultConfig)
+                        ? Arr::get($adultConfig, 'price', 0)
+                        : (float) $adultConfig;
 
                     $excursion = Excursion::create([
                         'title' => $template['title'],
@@ -57,10 +60,24 @@ class ExcursionScheduler
                         'is_active' => true,
                     ]);
 
-                    foreach ($tariffs as $type => $price) {
+                    foreach ($tariffs as $type => $config) {
+                        $price = is_array($config)
+                            ? Arr::get($config, 'price', 0)
+                            : (float) $config;
+                        $sellerCommission = is_array($config)
+                            ? Arr::get($config, 'seller_commission_percent', 10)
+                            : 10;
+                        $partnerCommission = is_array($config)
+                            ? Arr::get($config, 'partner_commission_percent', 10)
+                            : 10;
+
                         $excursion->prices()->updateOrCreate(
                             ['passenger_type' => $type],
-                            ['price' => $price]
+                            [
+                                'price' => $price,
+                                'seller_commission_percent' => $sellerCommission,
+                                'partner_commission_percent' => $partnerCommission,
+                            ]
                         );
                     }
                 });
