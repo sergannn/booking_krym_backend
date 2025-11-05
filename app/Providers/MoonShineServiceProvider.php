@@ -17,6 +17,7 @@ use App\MoonShine\Resources\UserResource;
 use App\MoonShine\Resources\BookingResource;
 use App\MoonShine\Resources\StopResource;
 use App\MoonShine\Resources\WalletTransactionResource;
+use App\MoonShine\Resources\ScheduleResource;
 
 class MoonShineServiceProvider extends ServiceProvider
 {
@@ -29,6 +30,7 @@ class MoonShineServiceProvider extends ServiceProvider
     {
         $core
             ->resources([
+                ScheduleResource::class,
                 UserResource::class,
                 ExcursionResource::class,
                 BusSeatResource::class,
