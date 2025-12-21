@@ -30,13 +30,17 @@ use MoonShine\UI\Components\{Breadcrumbs,
     Layout\TopBar,
     Layout\Wrapper,
     When};
-use App\MoonShine\Resources\ExcursionResource;
 use MoonShine\MenuManager\MenuItem;
 use App\MoonShine\Resources\BusSeatResource;
 use App\MoonShine\Resources\UserResource;
 use App\MoonShine\Resources\BookingResource;
 use App\MoonShine\Resources\StopResource;
 use App\MoonShine\Resources\WalletTransactionResource;
+use App\MoonShine\Resources\ScheduleResource;
+use App\MoonShine\Resources\ExcursionPriceResource;
+use App\MoonShine\Resources\ScheduleDayResource;
+use App\MoonShine\Resources\ExcursionResource;
+use App\MoonShine\Resources\ExcursionUserResource;
 
 final class MoonShineLayout extends AppLayout
 {
@@ -51,12 +55,16 @@ final class MoonShineLayout extends AppLayout
     {
         return [
             ...parent::menu(),
+            MenuItem::make('Расписание', ScheduleResource::class),
             MenuItem::make('Экскурсии', ExcursionResource::class),
+            MenuItem::make('Цены экскурсий', ExcursionPriceResource::class),
             MenuItem::make('Бронирования', BookingResource::class),
             MenuItem::make('Места в автобусе', BusSeatResource::class),
             MenuItem::make('Остановки', StopResource::class),
             MenuItem::make('Транзакции кошелька', WalletTransactionResource::class),
             MenuItem::make('Пользователи', UserResource::class),
+            MenuItem::make('ScheduleDays', ScheduleDayResource::class),
+            MenuItem::make('Назначения персонала', ExcursionUserResource::class),
         ];
     }
 

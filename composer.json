@@ -7,13 +7,16 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^3.1",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.2",
+        "laravel/telescope": "^5.15",
         "laravel/tinker": "^2.10.1",
         "moonshine/jwt": "^1.0",
         "moonshine/moonshine": "^3.16"
     },
     "require-dev": {
+        "andyabih/laravel-to-uml": "^1.0",
         "beyondcode/laravel-er-diagram-generator": "^5.0",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.2",

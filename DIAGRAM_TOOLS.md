@@ -129,3 +129,6 @@ php artisan schema:diagram
 - PlantUML документация: https://plantuml.com/
 - Laravel Modeler: https://github.com/laravel-modeler/laravel-modeler
 
+
+
+

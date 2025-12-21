@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateUserRequest;
-use MoonShine\Laravel\Models\MoonshineUser;
+use App\Models\MoonshineUserExtension as MoonshineUser;
 use MoonShine\Laravel\Models\MoonshineUserRole;
 
 class UserController extends Controller
@@ -24,6 +24,7 @@ class UserController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
+                'plain_password' => $validated['password'], // Сохраняем исходный пароль для админа
                 'moonshine_user_role_id' => $validated['role_id'],
             ]);
 
@@ -38,6 +39,7 @@ class UserController extends Controller
                     'email' => $user->email,
                     'role' => $user->moonshineUserRole?->name ?? 'Unknown',
                     'role_id' => $user->moonshine_user_role_id,
+                    'password' => $user->plain_password, // Возвращаем пароль при создании
                     'created_at' => $user->created_at,
                     'updated_at' => $user->updated_at,
                 ],
@@ -108,8 +110,46 @@ class UserController extends Controller
 
             $users = $query->paginate($request->get('per_page', 15));
 
+            // Для админов возвращаем пароль
+            // Проверяем аутентификацию через заголовок Authorization
+            $currentUser = $request->user();
+            // Если user() вернул null, пытаемся получить пользователя из токена
+            if (!$currentUser && $request->bearerToken()) {
+                $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+                if ($token) {
+                    $currentUser = $token->tokenable;
+                }
+            }
+            $isAdmin = $currentUser && ($currentUser->isSuperUser() || (int) $currentUser->moonshine_user_role_id === 1);
+            
+            $usersData = collect($users->items())->map(function ($user) use ($isAdmin) {
+                // Получаем баланс кошелька
+                $balance = \App\Models\WalletTransaction::where('user_id', $user->id)->sum('amount');
+                
+                $userData = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->moonshineUserRole?->name ?? 'Unknown',
+                    'role_id' => $user->moonshine_user_role_id,
+                    'balance' => round($balance, 2),
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ];
+                
+                // Для админов показываем пароль
+                if ($isAdmin) {
+                    // Получаем plain_password напрямую из атрибутов модели
+                    $attributes = $user->getAttributes();
+                    $plainPassword = $attributes['plain_password'] ?? null;
+                    $userData['password'] = $plainPassword !== null && $plainPassword !== '' ? $plainPassword : 'Не установлен';
+                }
+                
+                return $userData;
+            })->toArray();
+
             return response()->json([
-                'users' => $users->items(),
+                'users' => $usersData,
                 'pagination' => [
                     'current_page' => $users->currentPage(),
                     'last_page' => $users->lastPage(),
@@ -132,21 +172,14 @@ class UserController extends Controller
     public function roles()
     {
         try {
-            $roles = MoonshineUser::with('moonshineUserRole')
+            $roles = \MoonShine\Laravel\Models\MoonshineUserRole::select('id', 'name')
                 ->get()
-                ->map(function (MoonshineUser $user) {
-                    if (is_null($user->moonshine_user_role_id)) {
-                        return null;
-                    }
-
+                ->map(function ($role) {
                     return [
-                        'id' => $user->moonshine_user_role_id,
-                        'name' => $user->moonshineUserRole?->name ?? 'Unknown',
+                        'id' => $role->id,
+                        'name' => $role->name,
                     ];
-                })
-                ->filter()
-                ->unique('id')
-                ->values();
+                });
 
             return response()->json([
                 'roles' => $roles,

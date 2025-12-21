@@ -5,8 +5,10 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\WalletTransaction;
 use App\Models\Booking;
+use App\Models\Excursion;
 use MoonShine\Laravel\Models\MoonshineUser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class WalletController extends Controller
 {
@@ -176,6 +178,139 @@ class WalletController extends Controller
             'total_profit' => round($totalProfit, 2),
             'breakdown' => $breakdown,
             'totals_by_type' => $formattedTotals,
+        ]);
+    }
+
+    /**
+     * Получить прибыль персонала (водителей/экскурсоводов)
+     */
+    public function staffProfit($userId)
+    {
+        $user = MoonshineUser::findOrFail($userId);
+        $request = request();
+        
+        // Проверяем, что пользователь запрашивает свою прибыль или это админ
+        // Поддерживаем и Sanctum токены, и сессию MoonShine
+        $currentUser = $request->user('sanctum') 
+            ?? $request->user('web') 
+            ?? Auth::guard('moonshine')->user()
+            ?? $request->user();
+        
+        // Если user() вернул null, пытаемся получить пользователя из токена
+        if (!$currentUser && $request->bearerToken()) {
+            $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+            if ($token) {
+                $currentUser = $token->tokenable;
+            }
+        }
+        
+        if (!$currentUser || ($currentUser->id != $userId && !$currentUser->isSuperUser() && (int) $currentUser->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для просмотра прибыли персонала.');
+        }
+
+        // Получаем все экскурсии, на которые назначен пользователь
+        $assignedExcursions = Excursion::whereHas('assignedUsers', function ($query) use ($userId) {
+            $query->where('moonshine_users.id', $userId);
+        })
+        ->with(['bookings', 'staffPrices', 'assignedUsers'])
+        ->where('is_active', true)
+        ->orderBy('date_time', 'desc')
+        ->get();
+
+        $totalProfit = 0;
+        $breakdown = [];
+
+        foreach ($assignedExcursions as $excursion) {
+            // Определяем роль пользователя в этой экскурсии
+            $userAssignment = $excursion->assignedUsers->firstWhere('id', $userId);
+            if (!$userAssignment) {
+                continue;
+            }
+            
+            $roleInExcursion = $userAssignment->pivot->role_in_excursion;
+            if (!in_array($roleInExcursion, ['driver', 'guide'])) {
+                continue;
+            }
+
+            // Получаем бронирования для этой экскурсии
+            $bookings = $excursion->bookings;
+            
+            // Группируем бронирования по дате экскурсии
+            $bookingsByDate = $bookings->groupBy(function ($booking) {
+                // Используем excursion_date, если есть, иначе пытаемся определить из weekday/time
+                if ($booking->excursion_date) {
+                    return $booking->excursion_date->format('Y-m-d');
+                }
+                // Если нет excursion_date, используем booked_at как fallback
+                return $booking->booked_at ? $booking->booked_at->format('Y-m-d') : 'unknown';
+            });
+            
+            // Для каждой даты считаем прибыль отдельно
+            foreach ($bookingsByDate as $dateKey => $dateBookings) {
+                $passengerCount = $dateBookings->count();
+                
+                // Подсчитываем пассажиров по типам для этой даты
+                $passengersByType = [];
+                $totalRevenue = 0;
+                foreach ($dateBookings as $booking) {
+                    $passengerType = $booking->passenger_type ?? 'adult';
+                    if (!isset($passengersByType[$passengerType])) {
+                        $passengersByType[$passengerType] = 0;
+                    }
+                    $passengersByType[$passengerType]++;
+                    $totalRevenue += (float) $booking->price;
+                }
+                
+                // Находим подходящую цену для персонала по количеству пассажиров на эту дату
+                $staffPrice = $excursion->staffPrices
+                    ->where('staff_type', $roleInExcursion)
+                    ->first(function ($price) use ($passengerCount) {
+                        return $price->matchesPassengerCount($passengerCount);
+                    });
+
+                $profit = 0;
+                $staffPriceInfo = null;
+                if ($staffPrice) {
+                    $profit = (float) $staffPrice->price;
+                    $totalProfit += $profit;
+                    $staffPriceInfo = [
+                        'price' => round((float) $staffPrice->price, 2),
+                        'min_passengers' => $staffPrice->min_passengers,
+                        'max_passengers' => $staffPrice->max_passengers,
+                    ];
+                }
+
+                // Определяем дату для отображения
+                $excursionDate = null;
+                if ($dateKey !== 'unknown') {
+                    try {
+                        $excursionDate = \Carbon\Carbon::parse($dateKey);
+                    } catch (\Exception $e) {
+                        // Если не удалось распарсить, используем date_time экскурсии
+                        $excursionDate = $excursion->date_time;
+                    }
+                } else {
+                    $excursionDate = $excursion->date_time;
+                }
+
+                $breakdown[] = [
+                    'excursion_id' => $excursion->id,
+                    'excursion_title' => $excursion->title,
+                    'excursion_date' => $excursionDate?->format('Y-m-d'),
+                    'date_time' => $excursionDate?->toISOString(),
+                    'role' => $roleInExcursion,
+                    'passenger_count' => $passengerCount,
+                    'passengers_by_type' => $passengersByType,
+                    'total_revenue' => round($totalRevenue, 2),
+                    'profit' => round($profit, 2),
+                    'staff_price_info' => $staffPriceInfo,
+                ];
+            }
+        }
+
+        return response()->json([
+            'total_profit' => round($totalProfit, 2),
+            'breakdown' => $breakdown,
         ]);
     }
 }

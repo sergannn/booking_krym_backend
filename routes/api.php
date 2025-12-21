@@ -8,6 +8,7 @@ use App\Http\Controllers\API\BookingController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\StopsController;
 use App\Http\Controllers\API\WalletController;
+use App\Http\Controllers\API\SeatPermissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,13 @@ use App\Http\Controllers\API\WalletController;
 // Публичные маршруты (без аутентификации)
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/excursions', [ExcursionController::class, 'index']);
+// Важно: конкретные маршруты должны быть ПЕРЕД маршрутами с параметрами
+Route::get('/schedule', [ExcursionController::class, 'schedule']);
+// Маршрут statistics должен быть перед {id}, поэтому выносим его сюда с middleware
+Route::middleware('auth:sanctum')->get('/excursions/statistics', [ExcursionController::class, 'statistics']);
+// Проверка новых назначений - должен быть перед /excursions/{id}
+Route::middleware('auth:sanctum')->get('/excursions/check-new-assignments', [ExcursionController::class, 'checkNewAssignments']);
+// Показ экскурсии - публичный, но может требовать аутентификации для админов
 Route::get('/excursions/{id}', [ExcursionController::class, 'show']);
 
 // Остановки (публичные)
@@ -70,13 +78,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Бронирование мест
     Route::post('/bookings', [BookingController::class, 'store']);
     Route::get('/bookings', [BookingController::class, 'index']);
+    Route::get('/bookings/driver', [BookingController::class, 'driverBookings']); // Бронирования для водителя/экскурсовода
     Route::delete('/bookings/{id}', [BookingController::class, 'destroy']);
+    Route::get('/bookings/{id}/ticket-pdf', [BookingController::class, 'ticketPdf']);
 
     // Управление экскурсиями (админ)
     Route::post('/excursions', [ExcursionController::class, 'store']);
     Route::post('/excursions/{id}/assign', [ExcursionController::class, 'assign']);
     Route::delete('/excursions/{id}/assign/{user_id}', [ExcursionController::class, 'unassign']);
     Route::put('/excursions/{id}/prices', [ExcursionController::class, 'updatePrices']);
+    Route::put('/excursions/{id}/staff-prices', [ExcursionController::class, 'updateStaffPrices']);
     
     // Кошелек и история продаж
     Route::get('/users/{id}/wallet', [WalletController::class, 'show']);
@@ -88,4 +99,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{id}/assigned-excursions', function($id) {
         return app(ExcursionController::class)->index(request()->merge(['assigned_to' => $id]));
     });
+    
+    // Прибыль персонала (водители/экскурсоводы)
+    Route::get('/users/{id}/staff-profit', [WalletController::class, 'staffProfit']);
+    
+    // Управление разрешениями на места 1-2 (только для админов)
+    Route::get('/seat-permissions', [SeatPermissionController::class, 'index']);
+    Route::post('/seat-permissions', [SeatPermissionController::class, 'store']);
+    Route::delete('/seat-permissions/{id}', [SeatPermissionController::class, 'destroy']);
+    
+    // Запросы доступа к местам 1-2
+    Route::get('/seat-access-requests', [SeatPermissionController::class, 'requests']); // Админ: все запросы
+    Route::get('/seat-access-requests/my', [SeatPermissionController::class, 'myRequests']); // Продавец: свои запросы
+    Route::post('/seat-access-requests', [SeatPermissionController::class, 'createRequest']); // Создать запрос
+    Route::post('/seat-access-requests/{id}/approve', [SeatPermissionController::class, 'approveRequest']); // Одобрить
+    Route::post('/seat-access-requests/{id}/reject', [SeatPermissionController::class, 'rejectRequest']); // Отклонить
 });

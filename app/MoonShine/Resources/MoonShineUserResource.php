@@ -11,6 +11,7 @@ use MoonShine\Laravel\Fields\Relationships\BelongsTo;
 use MoonShine\Laravel\Models\MoonshineUser;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\Laravel\Models\MoonshineUserRole;
+use MoonShine\Laravel\Fields\Relationships\BelongsToMany;
 use MoonShine\MenuManager\Attributes\Group;
 use MoonShine\MenuManager\Attributes\Order;
 use MoonShine\Support\Attributes\Icon;
@@ -86,11 +87,6 @@ class MoonShineUserResource extends ModelResource
         ];
     }
 
-    protected function detailFields(): iterable
-    {
-        return $this->indexFields();
-    }
-
     protected function formFields(): iterable
     {
         return [
@@ -139,6 +135,16 @@ class MoonShineUserResource extends ModelResource
                     ])->icon('lock-closed'),
                 ]),
             ]),
+        ];
+    }
+
+    protected function detailFields(): iterable
+    {
+        return [
+            ...$this->indexFields(),
+            // Добавляем отображение назначенных экскурсий через макрос или расширение модели
+            // Но так как MoonshineUser не имеет assignedExcursions напрямую, 
+            // нужно использовать другой подход
         ];
     }
 

@@ -24,6 +24,7 @@ use MoonShine\Support\Enums\Color;
 use MoonShine\MenuManager\Attributes\Group;
 use MoonShine\MenuManager\Attributes\Order;
 use MoonShine\Support\Attributes\Icon;
+use Carbon\Carbon;
 
 #[Icon('ticket')]
 #[Group('Бронирования', 'bookings')]
@@ -58,8 +59,7 @@ class BookingResource extends ModelResource
         return [
             ID::make()->sortable(),
             
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class)
-                ->sortable(),
+            Text::make('Экскурсия', 'excursion.title'),
                 
             Text::make('Клиент', 'customer_name')
                 ->sortable(),
@@ -76,6 +76,11 @@ class BookingResource extends ModelResource
             BelongsTo::make('Продавец', 'bookedBy', resource: MoonShineUserResource::class)
                 ->nullable(),
                 
+            // Дата экскурсии (а не дата создания брони)
+            Date::make('Дата экскурсии', 'excursion_date')
+                ->format('d.m.Y H:i')
+                ->sortable(),
+                
             Date::make('Дата бронирования', 'booked_at'),
         ];
     }
@@ -89,7 +94,10 @@ class BookingResource extends ModelResource
             Box::make([
                 ID::make(),
                 
-                BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class)
+                Select::make('Экскурсия', 'excursion_id')
+                    ->options(function () {
+                        return \App\Models\Excursion::pluck('title', 'id')->toArray();
+                    })
                     ->required(),
                     
                 BelongsTo::make('Место в автобусе', 'busSeat', resource: BusSeatResource::class)
@@ -107,6 +115,7 @@ class BookingResource extends ModelResource
                         'child' => 'Ребенок',
                         'senior' => 'Пенсионер',
                         'disabled' => 'Инвалид',
+                        'special' => 'Спеццена',
                     ])
                     ->default('adult'),
                     
@@ -133,7 +142,7 @@ class BookingResource extends ModelResource
         return [
             ID::make(),
             
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class),
+            Text::make('Экскурсия', 'excursion.title'),
             
             BelongsTo::make('Место в автобусе', 'busSeat', resource: BusSeatResource::class),
             
@@ -148,6 +157,9 @@ class BookingResource extends ModelResource
             BelongsTo::make('Остановка', 'stop', resource: StopResource::class),
             
             BelongsTo::make('Продавец', 'bookedBy', resource: MoonShineUserResource::class),
+            
+            Date::make('Дата экскурсии', 'excursion_date')
+                ->format('d.m.Y H:i'),
             
             Date::make('Дата бронирования', 'booked_at')
                 ->format('d.m.Y H:i'),
@@ -167,7 +179,7 @@ class BookingResource extends ModelResource
             'bus_seat_id' => 'required|exists:bus_seats,id',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
-            'passenger_type' => 'required|in:adult,child,senior,disabled',
+            'passenger_type' => 'required|in:adult,child,senior,disabled,special',
             'price' => 'required|numeric|min:0',
             'stop_id' => 'required|exists:stops,id',
             'booked_by' => 'required|exists:moonshine_users,id',
@@ -186,7 +198,10 @@ class BookingResource extends ModelResource
     protected function filters(): iterable
     {
         return [
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class),
+            Select::make('Экскурсия', 'excursion_id')
+                ->options(function () {
+                    return \App\Models\Excursion::pluck('title', 'id')->toArray();
+                }),
             
             BelongsTo::make('Остановка', 'stop', resource: StopResource::class),
             
@@ -196,9 +211,11 @@ class BookingResource extends ModelResource
                     'child' => 'Ребенок',
                     'senior' => 'Пенсионер',
                     'disabled' => 'Инвалид',
+                    'special' => 'Спеццена',
                 ]),
                 
             BelongsTo::make('Продавец', 'bookedBy', resource: MoonShineUserResource::class),
         ];
     }
+
 }

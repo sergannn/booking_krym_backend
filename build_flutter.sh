@@ -13,3 +13,5 @@ cp -r flutter_app/build/web public/flutter_app
 
 echo "Flutter app deployed to: https://excursion.panfilius.ru/flutter_app/"
 echo "API redirect: https://excursion.panfilius.ru/api/app"
+
+

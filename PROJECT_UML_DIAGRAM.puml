@@ -1,0 +1,342 @@
+@startuml Excursion Management System
+
+!define BACKEND_COLOR #E3F2FD
+!define FRONTEND_COLOR #F3E5F5
+!define API_COLOR #FFF3E0
+
+package "Laravel Backend" BACKEND_COLOR {
+  
+  class Excursion {
+    +int id
+    +string title
+    +string description
+    +datetime date_time
+    +decimal price
+    +int max_seats
+    +bool is_active
+    --
+    +createBusSeats()
+    +createDefaultPrices()
+    +getFormattedPricesAttribute()
+  }
+  
+  class BusSeat {
+    +int id
+    +int excursion_id
+    +int seat_number
+    +string status
+    +int booked_by
+    +datetime booked_at
+    --
+    +isAvailable()
+    +isBooked()
+    +isReserved()
+  }
+  
+  class ExcursionPrice {
+    +int id
+    +int excursion_id
+    +string passenger_type
+    +decimal price
+    +decimal price_without_entry
+    +decimal price_with_entry
+    +decimal seller_commission_percent
+    +decimal partner_commission_percent
+  }
+  
+  class Booking {
+    +int id
+    +int excursion_id
+    +int bus_seat_id
+    +int booked_by
+    +decimal price
+    +string customer_name
+    +string customer_phone
+    +string passenger_type
+    +int stop_id
+    +datetime booked_at
+    +bool with_entry
+  }
+  
+  class Stop {
+    +int id
+    +string name
+    +int order
+  }
+  
+  class WalletTransaction {
+    +int id
+    +int user_id
+    +int booking_id
+    +decimal amount
+    +string description
+  }
+  
+  class MoonshineUser {
+    +int id
+    +string name
+    +string email
+    +int moonshine_user_role_id
+  }
+  
+  class StaffPrice {
+    +int id
+    +int excursion_id
+    +string role_type
+    +decimal price
+  }
+  
+  ' Relationships
+  Excursion "1" *-- "many" BusSeat : has
+  Excursion "1" *-- "many" ExcursionPrice : has
+  Excursion "1" *-- "many" Booking : has
+  Excursion "1" *-- "many" StaffPrice : has
+  Excursion "many" -- "many" MoonshineUser : assignedUsers
+  
+  Booking "many" --> "1" Excursion : belongs to
+  Booking "many" --> "1" BusSeat : belongs to
+  Booking "many" --> "1" Stop : belongs to
+  Booking "many" --> "1" MoonshineUser : bookedBy
+  Booking "1" *-- "many" WalletTransaction : has
+  
+  BusSeat "many" --> "1" Excursion : belongs to
+  BusSeat "many" --> "0..1" MoonshineUser : bookedBy
+  
+  ExcursionPrice "many" --> "1" Excursion : belongs to
+  
+  WalletTransaction "many" --> "1" MoonshineUser : belongs to
+  WalletTransaction "many" --> "0..1" Booking : belongs to
+  
+  Stop "1" *-- "many" Booking : has
+}
+
+package "Laravel API Controllers" API_COLOR {
+  
+  class ExcursionController {
+    +index()
+    +show()
+    +store()
+    +updatePrices()
+    +assign()
+    +unassign()
+  }
+  
+  class BookingController {
+    +index()
+    +store()
+    +destroy()
+    +ticketPdf()
+  }
+  
+  class AuthController {
+    +login()
+    +logout()
+    +me()
+  }
+  
+  class UserController {
+    +index()
+    +show()
+    +store()
+    +roles()
+    +destroy()
+  }
+  
+  class WalletController {
+    +index()
+    +balance()
+  }
+  
+  class StopsController {
+    +index()
+  }
+  
+  ' Controller to Model relationships
+  ExcursionController ..> Excursion : uses
+  ExcursionController ..> BusSeat : uses
+  ExcursionController ..> ExcursionPrice : uses
+  
+  BookingController ..> Booking : uses
+  BookingController ..> BusSeat : uses
+  
+  UserController ..> MoonshineUser : uses
+  
+  WalletController ..> WalletTransaction : uses
+  WalletController ..> MoonshineUser : uses
+  
+  StopsController ..> Stop : uses
+}
+
+package "Flutter Frontend" FRONTEND_COLOR {
+  
+  class ExcursionModel {
+    +int id
+    +String title
+    +String description
+    +DateTime dateTime
+    +double price
+    +int maxSeats
+    +List<BusSeat> busSeats
+    +Map<String, ExcursionTariff> tariffs
+    +List<ExcursionStaff> assignedStaff
+    --
+    +fromJson()
+    +priceFor()
+  }
+  
+  class ExcursionTariff {
+    +double? price
+    +double? priceWithoutEntry
+    +double? priceWithEntry
+    +double sellerCommissionPercent
+    +double partnerCommissionPercent
+  }
+  
+  class BusSeatModel {
+    +int id
+    +int seatNumber
+    +String status
+    +int? bookedBy
+    +DateTime? bookedAt
+  }
+  
+  class BookingModel {
+    +int id
+    +int excursionId
+    +int busSeatId
+    +String customerName
+    +String customerPhone
+    +String passengerType
+    +double price
+    +bool withEntry
+  }
+  
+  class UserModel {
+    +int id
+    +String name
+    +String email
+    +String roleName
+  }
+  
+  class StopModel {
+    +int id
+    +String name
+    +int order
+  }
+  
+  ' Flutter model relationships
+  ExcursionModel "1" *-- "many" BusSeatModel : contains
+  ExcursionModel "1" *-- "many" ExcursionTariff : contains
+  ExcursionModel "1" *-- "many" ExcursionStaff : contains
+  
+  BookingModel "many" --> "1" ExcursionModel : references
+  BookingModel "many" --> "1" BusSeatModel : references
+}
+
+package "Flutter Repositories" FRONTEND_COLOR {
+  
+  class ExcursionsRepository {
+    +fetchExcursions()
+    +updateTariffs()
+  }
+  
+  class BookingsRepository {
+    +fetchBookings()
+    +createBooking()
+    +deleteBooking()
+    +getTicketPdf()
+  }
+  
+  class AuthRepository {
+    +login()
+    +logout()
+    +getCurrentUser()
+  }
+  
+  class UsersRepository {
+    +fetchUsers()
+    +createUser()
+    +fetchRoles()
+    +deleteUser()
+  }
+  
+  class WalletRepository {
+    +fetchTransactions()
+    +getBalance()
+  }
+  
+  class StopsRepository {
+    +fetchStops()
+  }
+  
+  ' Repository to Model relationships
+  ExcursionsRepository ..> ExcursionModel : returns
+  BookingsRepository ..> BookingModel : returns
+  UsersRepository ..> UserModel : returns
+  WalletRepository ..> WalletTransaction : returns
+  StopsRepository ..> StopModel : returns
+}
+
+package "Flutter Features" FRONTEND_COLOR {
+  
+  package "Admin" {
+    class AdminHome
+    class PricesTab
+    class UsersTab
+    class ScheduleTab
+  }
+  
+  package "Seller" {
+    class SellerHome
+    class BookingDialog
+    class ExcursionsList
+  }
+  
+  AdminHome --> ExcursionsRepository : uses
+  AdminHome --> BookingsRepository : uses
+  AdminHome --> UsersRepository : uses
+  
+  SellerHome --> ExcursionsRepository : uses
+  SellerHome --> BookingsRepository : uses
+  BookingDialog --> BookingsRepository : uses
+}
+
+' API connections
+ExcursionsRepository ..> ExcursionController : HTTP
+BookingsRepository ..> BookingController : HTTP
+AuthRepository ..> AuthController : HTTP
+UsersRepository ..> UserController : HTTP
+WalletRepository ..> WalletController : HTTP
+StopsRepository ..> StopsController : HTTP
+
+note right of Excursion
+  Automatically creates:
+  - BusSeats (1 to max_seats)
+  - ExcursionPrices (for all passenger types)
+end note
+
+note right of Booking
+  Contains:
+  - Customer info
+  - Seat assignment
+  - Price (with/without entry)
+  - Stop location
+end note
+
+note right of ExcursionPrice
+  Pricing structure:
+  - price_without_entry
+  - price_with_entry
+  - Commission percentages
+end note
+
+@enduml
+
+
+
+
+
+
+
+
+

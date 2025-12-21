@@ -55,6 +55,8 @@ class AuthController extends Controller
                 'name' => $request->user()->name,
                 'email' => $request->user()->email,
                 'role' => $request->user()->moonshineUserRole?->name ?? 'Unknown',
+                'role_id' => $request->user()->moonshine_user_role_id,
+                'is_super_user' => $request->user()->isSuperUser(),
             ],
         ]);
     }

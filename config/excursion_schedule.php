@@ -24,6 +24,11 @@ return [
             'seller_commission_percent' => 10.0,
             'partner_commission_percent' => 10.0,
         ],
+        'special' => [
+            'price' => 1200.0,
+            'seller_commission_percent' => 10.0,
+            'partner_commission_percent' => 10.0,
+        ],
     ],
     'templates' => [
         [

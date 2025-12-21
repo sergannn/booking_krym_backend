@@ -57,14 +57,12 @@ class BusSeatResource extends ModelResource
         return [
             ID::make()->sortable(),
             
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class)
-                ->sortable(),
+            Text::make('Экскурсия', 'excursion.title'),
                 
             Text::make('Номер места', 'seat_number')
                 ->sortable(),
                 
-            Text::make('Статус', 'status')
-,
+            Text::make('Статус', 'status'),
                 
             BelongsTo::make('Забронировал', 'bookedBy', resource: MoonShineUserResource::class)
                 ->nullable(),
@@ -81,9 +79,6 @@ class BusSeatResource extends ModelResource
         return [
             Box::make([
                 ID::make(),
-                
-                BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class)
-                    ->required(),
                     
                 Text::make('Номер места', 'seat_number')
                     ->required(),
@@ -113,7 +108,7 @@ class BusSeatResource extends ModelResource
         return [
             ID::make(),
             
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class),
+            Text::make('Экскурсия', 'excursion.title'),
             
             Text::make('Номер места', 'seat_number'),
             
@@ -154,7 +149,10 @@ class BusSeatResource extends ModelResource
     protected function filters(): iterable
     {
         return [
-            BelongsTo::make('Экскурсия', 'excursion', resource: ExcursionResource::class),
+            Select::make('Экскурсия', 'excursion_id')
+                ->options(function () {
+                    return \App\Models\Excursion::pluck('title', 'id')->toArray();
+                }),
             
             Select::make('Статус', 'status')
                 ->options([

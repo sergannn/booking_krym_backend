@@ -67,3 +67,6 @@ php artisan generate:erd public/database-erd.png --format=png
 php artisan generate:erd --help
 ```
 
+
+
+

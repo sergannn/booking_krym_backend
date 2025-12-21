@@ -9,6 +9,43 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class MoonshineUserExtension extends BaseMoonshineUser
 {
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'moonshine_users';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'email',
+        'moonshine_user_role_id',
+        'password',
+        'name',
+        'avatar',
+        'plain_password',
+    ];
+
+    /**
+     * The attributes that should be visible in serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $visible = [
+        'id',
+        'name',
+        'email',
+        'moonshine_user_role_id',
+        'avatar',
+        'created_at',
+        'updated_at',
+        'plain_password', // Добавляем для доступа через API
+    ];
+
+    /**
      * Связь с транзакциями кошелька
      */
     public function walletTransactions(): HasMany

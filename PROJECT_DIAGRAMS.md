@@ -1,5 +1,21 @@
 # Архитектурные диаграммы проекта Excursion Booking System
 
+## UML Диаграмма проекта (PlantUML)
+
+Полная UML диаграмма проекта находится в файле `PROJECT_UML_DIAGRAM.puml`.
+
+Для просмотра диаграммы:
+1. Установите PlantUML: http://plantuml.com/
+2. Откройте файл в редакторе с поддержкой PlantUML (VS Code, IntelliJ IDEA)
+3. Или используйте онлайн-редактор: http://www.plantuml.com/plantuml/uml/
+
+Диаграмма включает:
+- **Laravel Backend**: Модели данных и их связи
+- **Laravel API Controllers**: REST API endpoints
+- **Flutter Frontend**: Модели данных
+- **Flutter Repositories**: Слой доступа к данным
+- **Flutter Features**: UI компоненты (Admin, Seller)
+
 ## 1. Общая архитектура системы
 
 ```mermaid
