@@ -125,6 +125,14 @@ class Excursion extends Model
     }
 
     /**
+     * Связь с внеплановыми датами экскурсии
+     */
+    public function unscheduledDates(): HasMany
+    {
+        return $this->hasMany(UnscheduledExcursionDate::class);
+    }
+
+    /**
      * Связь с бронированиями
      */
     public function bookings(): HasMany

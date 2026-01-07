@@ -84,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Управление экскурсиями (админ)
     Route::post('/excursions', [ExcursionController::class, 'store']);
+    Route::post('/excursions/{id}/unscheduled-date', [ExcursionController::class, 'addUnscheduledDate']);
     Route::post('/excursions/{id}/assign', [ExcursionController::class, 'assign']);
     Route::delete('/excursions/{id}/assign/{user_id}', [ExcursionController::class, 'unassign']);
     Route::put('/excursions/{id}/prices', [ExcursionController::class, 'updatePrices']);
@@ -105,6 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Управление разрешениями на места 1-2 (только для админов)
     Route::get('/seat-permissions', [SeatPermissionController::class, 'index']);
+    Route::get('/seat-permissions/check', [SeatPermissionController::class, 'checkPermissions']);
     Route::post('/seat-permissions', [SeatPermissionController::class, 'store']);
     Route::delete('/seat-permissions/{id}', [SeatPermissionController::class, 'destroy']);
     

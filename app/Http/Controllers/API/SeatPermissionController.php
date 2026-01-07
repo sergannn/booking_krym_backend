@@ -37,7 +37,7 @@ class SeatPermissionController extends Controller
         }
 
         if ($request->has('excursion_date')) {
-            $query->where('excursion_date', $request->excursion_date);
+            $query->whereDate('excursion_date', $request->excursion_date);
         }
 
         if ($request->has('user_id')) {
@@ -300,6 +300,36 @@ class SeatPermissionController extends Controller
 
         return response()->json([
             'message' => 'Запрос отклонен',
+        ]);
+    }
+
+    /**
+     * Проверить разрешения пользователя для экскурсии и даты
+     * GET /api/seat-permissions/check?excursion_id=1&excursion_date=2024-12-30
+     */
+    public function checkPermissions(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'excursion_id' => 'required|exists:excursions,id',
+            'excursion_date' => 'required|date',
+        ]);
+
+        $excursionId = $request->input('excursion_id');
+        $excursionDate = \Carbon\Carbon::parse($request->input('excursion_date'))->format('Y-m-d');
+
+        $permissions = SeatPermission::where('excursion_id', $excursionId)
+            ->where('user_id', $user->id)
+            ->whereDate('excursion_date', $excursionDate)
+            ->whereIn('seat_number', [1, 2])
+            ->pluck('seat_number')
+            ->toArray();
+
+        return response()->json([
+            'has_permission_for_seat_1' => in_array(1, $permissions),
+            'has_permission_for_seat_2' => in_array(2, $permissions),
+            'permissions' => $permissions,
         ]);
     }
 

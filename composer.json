@@ -13,7 +13,8 @@
         "laravel/telescope": "^5.15",
         "laravel/tinker": "^2.10.1",
         "moonshine/jwt": "^1.0",
-        "moonshine/moonshine": "^3.16"
+        "moonshine/moonshine": "^3.16",
+        "sentry/sentry-laravel": "^4.20"
     },
     "require-dev": {
         "andyabih/laravel-to-uml": "^1.0",

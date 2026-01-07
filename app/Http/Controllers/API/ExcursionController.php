@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Excursion;
+use App\Models\UnscheduledExcursionDate;
 use App\Services\ExcursionScheduler;
 use MoonShine\Laravel\Models\MoonshineUser;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class ExcursionController extends Controller
         $isStaff = $user && in_array((int) $user->moonshine_user_role_id, [3, 5], true);
 
         // Всегда подтягиваем бронирования, чтобы считать занятость мест на конкретную дату
-        $relations = ['busSeats', 'assignedUsers', 'prices', 'staffPrices', 'bookings.stop'];
+        $relations = ['busSeats', 'assignedUsers', 'prices', 'staffPrices', 'bookings.stop', 'unscheduledDates'];
 
         $query = Excursion::with($relations)->with('scheduleTemplate.scheduleDays');
         
@@ -123,6 +124,7 @@ class ExcursionController extends Controller
                 $transformed['bus_seats'] = $busSeats;
                 $transformed['booked_seats_count'] = $busSeats->where('status', 'booked')->count();
                 $transformed['available_seats_count'] = $excursion->max_seats - $transformed['booked_seats_count'];
+                $transformed['is_unscheduled'] = false; // Старые экскурсии без расписания не считаются внеплановыми
                 
                 $expandedExcursions->push($transformed);
             } else {
@@ -172,6 +174,7 @@ class ExcursionController extends Controller
                         'date_time' => $scheduleItem['date_time'],
                         'date' => $scheduleItem['date'],
                         'time' => $scheduleItem['time'],
+                        'is_unscheduled' => $scheduleItem['is_unscheduled'] ?? false,
                     ]);
 
                     // Пересчитываем занятость мест для выбранной даты/времени
@@ -280,6 +283,46 @@ class ExcursionController extends Controller
 
         return response()->json([
             'message' => 'Экскурсия создана',
+            'data' => $this->transformExcursion($excursion),
+        ], 201);
+    }
+
+    /**
+     * Добавить внеплановую дату к экскурсии
+     */
+    public function addUnscheduledDate(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isSuperUser() && (int) $user->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для добавления внеплановой даты.');
+        }
+
+        $validated = $request->validate([
+            'date_time' => 'required|date',
+        ]);
+
+        $excursion = Excursion::findOrFail($id);
+
+        // Проверяем, не существует ли уже такая дата
+        $exists = $excursion->unscheduledDates()
+            ->where('date_time', $validated['date_time'])
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'Эта внеплановая дата уже существует для данной экскурсии',
+            ], 422);
+        }
+
+        $unscheduledDate = $excursion->unscheduledDates()->create([
+            'date_time' => $validated['date_time'],
+        ]);
+
+        $excursion->load(['unscheduledDates']);
+
+        return response()->json([
+            'message' => 'Внеплановая дата добавлена',
             'data' => $this->transformExcursion($excursion),
         ], 201);
     }
@@ -471,10 +514,29 @@ class ExcursionController extends Controller
                         'weekday' => $dateWeekday,
                         'weekday_name' => $scheduleForDay['weekday_name'] ?? '',
                         'time' => $time,
+                        'is_unscheduled' => false,
                     ];
                 }
             }
         }
+        
+        // Добавляем внеплановые даты
+        foreach ($excursion->unscheduledDates as $unscheduledDate) {
+            $dateTime = \Carbon\Carbon::parse($unscheduledDate->date_time);
+            $scheduleByDate[] = [
+                'date' => $dateTime->format('Y-m-d'),
+                'date_time' => $dateTime->toISOString(),
+                'weekday' => $dateTime->isoWeekday(),
+                'weekday_name' => '',
+                'time' => $dateTime->format('H:i'),
+                'is_unscheduled' => true,
+            ];
+        }
+        
+        // Сортируем по дате/времени
+        usort($scheduleByDate, function($a, $b) {
+            return strcmp($a['date_time'], $b['date_time']);
+        });
 
         return [
             'id' => $excursion->id,
@@ -484,8 +546,9 @@ class ExcursionController extends Controller
             'date' => $excursion->date_time?->format('Y-m-d'),
             'time' => $excursion->date_time?->format('H:i'),
             'schedule' => $schedule,
-            'schedule_by_date' => $scheduleByDate, // Массив всех дат, на которые запланирована экскурсия (на 60 дней вперед)
+            'schedule_by_date' => $scheduleByDate, // Массив всех дат, на которые запланирована экскурсия (на 60 дней вперед + внеплановые)
             'weekdays' => $weekdays, // Массив дней недели (1-7), на которые запланирована экскурсия
+            'has_unscheduled' => $excursion->unscheduledDates->isNotEmpty(), // Есть ли внеплановые даты
             'price' => $excursion->price,
             'max_seats' => $excursion->max_seats,
             'booked_seats_count' => $excursion->booked_seats_count,

@@ -39,6 +39,8 @@ class BookingController extends Controller
             'weekday' => 'required|integer|min:1|max:7',
             'time' => 'required|string', // HH:MM
             'excursion_date' => 'required|date', // Конкретная дата экскурсии (YYYY-MM-DD)
+            // booked_by_id - опционально, только для админов (для бронирования от лица продавца)
+            'booked_by_id' => 'sometimes|nullable|exists:moonshine_users,id',
             // Старый формат
             'seat_numbers' => $hasOldFormat ? 'required|array' : 'sometimes|array',
             'seat_numbers.*' => $hasOldFormat ? 'integer|min:1|max:100' : 'sometimes|integer|min:1|max:100',
@@ -53,6 +55,23 @@ class BookingController extends Controller
 
         $excursion = Excursion::with('prices')->findOrFail($request->excursion_id);
         $user = $request->user();
+        
+        // Определяем, от лица кого бронируем
+        // Если админ указал booked_by_id, используем его, иначе используем текущего пользователя
+        $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
+        $bookedByUserId = $user->id; // По умолчанию - текущий пользователь
+        
+        if ($isAdmin && $request->has('booked_by_id') && $request->booked_by_id !== null) {
+            // Админ может бронировать от лица другого пользователя (продавца)
+            $bookedByUserId = (int) $request->booked_by_id;
+            // Проверяем, что указанный пользователь существует
+            $targetUser = \MoonShine\Laravel\Models\MoonshineUser::find($bookedByUserId);
+            if (!$targetUser) {
+                throw ValidationException::withMessages([
+                    'booked_by_id' => ['Указанный пользователь не найден.'],
+                ]);
+            }
+        }
         
         // Целевая дата/время бронирования
         $targetWeekday = (int)$request->input('weekday');
@@ -112,9 +131,10 @@ class BookingController extends Controller
                 
                 if (!$isAdmin) {
                     // Проверяем наличие разрешения для этой даты и места
+                    // Используем whereDate для корректного сравнения дат
                     $hasPermission = \App\Models\SeatPermission::where('excursion_id', $excursion->id)
                         ->where('user_id', $user->id)
-                        ->where('excursion_date', $targetDate)
+                        ->whereDate('excursion_date', $targetDate)
                         ->where('seat_number', $seatNumber)
                         ->exists();
                     
@@ -184,7 +204,7 @@ class BookingController extends Controller
                 'time' => $targetTime,
                 'excursion_date' => $targetDate,
                 'bus_seat_id' => $seat->id,
-                'booked_by' => $user->id,
+                'booked_by' => $bookedByUserId, // Используем определенного пользователя (админ или продавец)
                 'price' => $pricePerSeat,
                 'customer_name' => $customerName,
                 'customer_phone' => $customerPhone,
@@ -194,12 +214,12 @@ class BookingController extends Controller
                 'booked_at' => now(),
             ]);
 
-            // Создаем транзакцию в кошельке продавца
+            // Создаем транзакцию в кошельке продавца (того, от лица кого бронируем)
             WalletTransaction::create([
-                'user_id' => $user->id,
+                'user_id' => $bookedByUserId,
                 'booking_id' => $booking->id,
                 'amount' => $pricePerSeat,
-                'description' => "Продажа места №{$seatNumber} ({$passengerType}) на экскурсию '{$excursion->title}'",
+                'description' => "№{$seatNumber} ({$passengerType})",
             ]);
 
             $bookedSeats[] = $seat;
@@ -570,10 +590,19 @@ class BookingController extends Controller
         // Отмена разрешена если:
         // - Для админа: всегда можно отменить (без ограничений по времени)
         // - Для продавцов: только если до экскурсии >= 24 часов
+        // Исключение: если с момента бронирования прошло менее 30 минут, можно отменить даже если до экскурсии < 24 часов
         if (!$isAdmin && $excursionDate && $excursionDate->isFuture() && $excursionDate->diffInHours(now()) < 24) {
-            return response()->json([
-                'message' => 'Отмена невозможна менее чем за 24 часа до экскурсии.',
-            ], 422);
+            // Проверяем, прошло ли менее 30 минут с момента создания бронирования
+            $bookingCreatedAt = $booking->created_at ?? $booking->booked_at ?? now();
+            $minutesSinceBooking = $bookingCreatedAt->diffInMinutes(now());
+            
+            // Если прошло 30 минут или больше, применяем ограничение 24 часа
+            if ($minutesSinceBooking >= 30) {
+                return response()->json([
+                    'message' => 'Отмена невозможна менее чем за 24 часа до экскурсии.',
+                ], 422);
+            }
+            // Если прошло менее 30 минут, разрешаем отмену (не возвращаем ошибку)
         }
 
         $reason = trim((string) $request->input('reason', ''));
@@ -611,6 +640,9 @@ class BookingController extends Controller
 
     public function ticketPdf(Request $request, $id)
     {
+        $user = $request->user();
+        $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
+        
         // Если передан массив ID бронирований через query параметр, используем их напрямую
         // Это самый надежный способ - используем данные, которые мы только что создали
         $bookingIds = $request->input('ids');
@@ -620,8 +652,23 @@ class BookingController extends Controller
             $bookingIds = $request->query('ids');
         }
         
+        // Пробуем получить как массив с индексами ids[0], ids[1] и т.д.
+        if ((!$bookingIds || !is_array($bookingIds)) && $request->has('ids')) {
+            $allIds = [];
+            $queryParams = $request->query();
+            foreach ($queryParams as $key => $value) {
+                if (preg_match('/^ids\[(\d+)\]$/', $key, $matches)) {
+                    $allIds[] = (int) $value;
+                }
+            }
+            if (!empty($allIds)) {
+                $bookingIds = $allIds;
+            }
+        }
+        
         // Логируем все query параметры для отладки
         \Log::info("PDF generation request. Booking ID: {$id}");
+        \Log::info("PDF generation request. User ID: {$user->id}, Is Admin: " . ($isAdmin ? 'yes' : 'no'));
         \Log::info("PDF generation request. All query params: " . json_encode($request->query()));
         \Log::info("PDF generation request. IDs input: " . json_encode($bookingIds) . ", Type: " . gettype($bookingIds));
         
@@ -632,15 +679,20 @@ class BookingController extends Controller
             \Log::info("PDF generation using provided IDs: " . implode(', ', $ids));
             
             // Получаем все указанные бронирования
-            $allBookings = Booking::with(['excursion', 'stop', 'busSeat', 'bookedByUser'])
-                ->whereIn('id', $ids)
-                ->where('booked_by', $request->user()->id) // Проверяем, что все бронирования принадлежат текущему пользователю
-                ->orderBy('bus_seat_id')
-                ->get();
+            $query = Booking::with(['excursion', 'stop', 'busSeat', 'bookedByUser'])
+                ->whereIn('id', $ids);
+            
+            // Проверка прав доступа: админ видит все, продавец - только свои
+            if (!$isAdmin) {
+                $query->where('booked_by', $user->id);
+            }
+            
+            $allBookings = $query->orderBy('bus_seat_id')->get();
             
             \Log::info("PDF generation found {$allBookings->count()} bookings from provided IDs. Requested: " . count($ids));
             
             if ($allBookings->isEmpty()) {
+                \Log::warning("PDF generation: No bookings found for IDs: " . implode(', ', $ids) . ", User ID: {$user->id}, Is Admin: " . ($isAdmin ? 'yes' : 'no'));
                 abort(404, 'Bookings not found');
             }
             
@@ -648,10 +700,15 @@ class BookingController extends Controller
             $booking = $allBookings->first();
         } else {
             // Старый способ: используем один ID и ищем связанные бронирования
-            $booking = Booking::with(['excursion', 'stop', 'busSeat', 'bookedByUser'])
-                ->where('id', $id)
-                ->where('booked_by', $request->user()->id)
-                ->firstOrFail();
+            $query = Booking::with(['excursion', 'stop', 'busSeat', 'bookedByUser'])
+                ->where('id', $id);
+            
+            // Проверка прав доступа: админ видит все, продавец - только свои
+            if (!$isAdmin) {
+                $query->where('booked_by', $user->id);
+            }
+            
+            $booking = $query->firstOrFail();
 
             // Ищем все бронирования, созданные тем же пользователем на ту же экскурсию и дату
             // Имена клиентов могут быть разные, поэтому не используем customer_name/customer_phone
