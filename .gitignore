@@ -1,5 +1,7 @@
 *.log
 .DS_Store
+# SQL backups (often exceed GitHub 100MB limit)
+backup_*.sql
 .env
 .env.backup
 .env.production
