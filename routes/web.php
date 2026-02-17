@@ -7,6 +7,26 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Маршрут для страницы задач
+Route::get('/tasks', function () {
+    $tasksPath = public_path('tasks.html');
+    if (file_exists($tasksPath)) {
+        return response(file_get_contents($tasksPath), 200)
+            ->header('Content-Type', 'text/html; charset=utf-8');
+    }
+    return response('Tasks file not found', 404);
+});
+
+// Маршрут для тестирования цветов схемы рассадки
+Route::get('/test-seating-colors', function () {
+    $colorsPath = public_path('test-seating-colors.html');
+    if (file_exists($colorsPath)) {
+        return response(file_get_contents($colorsPath), 200)
+            ->header('Content-Type', 'text/html; charset=utf-8');
+    }
+    return response('Test seating colors file not found', 404);
+});
+
 // Маршрут для скачивания APK
 Route::get('/download', function () {
     $apkPath = public_path('apk');

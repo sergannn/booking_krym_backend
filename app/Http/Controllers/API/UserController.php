@@ -133,6 +133,7 @@ class UserController extends Controller
                     'role' => $user->moonshineUserRole?->name ?? 'Unknown',
                     'role_id' => $user->moonshine_user_role_id,
                     'balance' => round($balance, 2),
+                    'color' => $user->color, // Цвет продавца
                     'created_at' => $user->created_at,
                     'updated_at' => $user->updated_at,
                 ];
@@ -217,6 +218,56 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Пользователь удалён',
+        ]);
+    }
+
+    /**
+     * Обновить цвет пользователя
+     */
+    public function updateColor(Request $request, $id)
+    {
+        // Получаем пользователя (как в методе index)
+        $currentUser = $request->user();
+        // Если user() вернул null, пытаемся получить пользователя из токена
+        if (!$currentUser && $request->bearerToken()) {
+            $token = \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken());
+            if ($token) {
+                $currentUser = $token->tokenable;
+            }
+        }
+        
+        $isAdmin = $currentUser && ($currentUser->isSuperUser() || (int) $currentUser->moonshine_user_role_id === 1);
+
+        if (!$isAdmin) {
+            return response()->json([
+                'message' => 'Недостаточно прав для изменения цвета',
+            ], 403);
+        }
+
+        $request->validate([
+            'color' => 'nullable|string',
+        ]);
+
+        $color = $request->input('color');
+        
+        // Проверяем формат HEX цвета, если он не пустой
+        if ($color !== null && $color !== '' && !preg_match('/^#[0-9A-Fa-f]{6}$/i', $color)) {
+            return response()->json([
+                'message' => 'Неверный формат цвета. Используйте HEX формат, например: #FF5733',
+            ], 422);
+        }
+
+        $user = MoonshineUser::findOrFail($id);
+        $user->color = $color === '' ? null : $color;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Цвет пользователя обновлён',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'color' => $user->color,
+            ],
         ]);
     }
 }

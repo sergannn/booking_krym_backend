@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест цветов схемы рассадки</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .info-section {
+            background: #f9fafb;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+        }
+
+        .info-section h3 {
+            color: #1f2937;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .info-section p {
+            color: #4b5563;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .seats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .seat {
+            width: 140px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            background: #f3f4f6;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .seat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .seat-number {
+            font-weight: bold;
+            font-size: 14px;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .seat-info {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        .seat-available {
+            background: #d1fae5; /* green.shade100 */
+        }
+
+        .seat-booked {
+            /* Цвет будет установлен через inline style */
+        }
+
+        .seat-unavailable {
+            background: #fee2e2; /* red.shade100 */
+        }
+
+        .controls {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .controls h3 {
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 4px;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+        }
+
+        .legend {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .legend h3 {
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            margin-right: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Тест цветов схемы рассадки</h1>
+        <p class="subtitle">Визуализация цветов продавцов в схеме рассадки администратора</p>
+
+        <div class="info-section">
+            <h3>📋 Информация о тесте</h3>
+            <p><strong>Экскурсия:</strong> Дегустация в Массандре</p>
+            <p><strong>Дата:</strong> Понедельник, 19 января 2026</p>
+            <p><strong>Логика:</strong> Занятые места отображаются цветом продавца, свободные - зеленым, недоступные - красным</p>
+            <p><strong>Реальные данные:</strong> Найдено 2 бронирования - Admin (#8D40EE) на месте №14, Люда Фирсова (#FF8C33) на месте №20</p>
+        </div>
+
+        <div class="controls">
+            <h3>⚙️ Настройки</h3>
+            <div class="control-group">
+                <label>Дата экскурсии:</label>
+                <input type="date" id="excursionDate" value="2026-01-19">
+            </div>
+            <div class="control-group">
+                <label>Время экскурсии:</label>
+                <input type="time" id="excursionTime" value="13:30">
+            </div>
+            <button class="btn" onclick="loadRealData()">🔄 Загрузить реальные данные</button>
+            <div id="loadingStatus" style="margin-top: 12px; color: #6b7280; font-size: 14px;"></div>
+        </div>
+
+        <div class="seats-grid" id="seatsGrid"></div>
+
+        <div class="legend">
+            <h3>📖 Легенда</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d1fae5;"></div>
+                <span>Свободное место</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #fee2e2;"></div>
+                <span>Недоступное место</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                <span>Занятое место (цвет продавца)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Функция для конвертации HEX в RGB
+        function hexToRgb(hex) {
+            if (!hex) return null;
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        // Функция для создания светлой версии цвета (как в Flutter)
+        function lightenColor(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return '#dbeafe'; // fallback
+            
+            // Увеличиваем яркость на 85% (как shade100 в Flutter)
+            const r = Math.min(255, Math.round(rgb.r + (255 - rgb.r) * 0.85));
+            const g = Math.min(255, Math.round(rgb.g + (255 - rgb.g) * 0.85));
+            const b = Math.min(255, Math.round(rgb.b + (255 - rgb.b) * 0.85));
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Преобразуем тип пассажира на русский
+        function getPassengerTypeText(type) {
+            if (!type) return '';
+            const typeLower = type.toLowerCase();
+            const types = {
+                'adult': 'Взрослый',
+                'child': 'Детский',
+                'senior': 'Пенсионер',
+                'disabled': 'Инвалид',
+                'special': 'Спеццена',
+                'concession': 'Льготный'
+            };
+            return types[typeLower] || type;
+        }
+
+        async function loadRealData() {
+            const date = document.getElementById('excursionDate').value;
+            const time = document.getElementById('excursionTime').value;
+            const statusDiv = document.getElementById('loadingStatus');
+            const grid = document.getElementById('seatsGrid');
+            
+            statusDiv.textContent = '⏳ Загрузка данных...';
+            grid.innerHTML = '';
+
+            try {
+                const response = await fetch(`/api/test-seating-data?date=${date}&time=${time}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Обновляем информацию о тесте
+                const infoSection = document.querySelector('.info-section');
+                if (infoSection) {
+                    const existingInfo = infoSection.querySelector('p:last-child');
+                    if (existingInfo) {
+                        existingInfo.innerHTML = `<strong>Реальные данные:</strong> ${data.excursion.title} - ${data.booked_seats} занято из ${data.total_seats} мест`;
+                    }
+                }
+                
+                statusDiv.textContent = `✅ Загружено: ${data.total_seats} мест, ${data.booked_seats} занято, ${data.available_seats} свободно`;
+
+                // Отображаем места
+                data.seats.forEach(seat => {
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = `seat seat-${seat.status}`;
+
+                    let seatColor = '#f3f4f6'; // default
+                    if (seat.status === 'available') {
+                        seatColor = '#d1fae5'; // green.shade100
+                    } else if (seat.status === 'unavailable') {
+                        seatColor = '#fee2e2'; // red.shade100
+                    } else if (seat.status === 'booked' && seat.booked_by_info && seat.booked_by_info.color) {
+                        // Используем цвет продавца (светлая версия)
+                        seatColor = lightenColor(seat.booked_by_info.color);
+                    } else if (seat.status === 'booked') {
+                        // Если нет цвета, используем стандартный синий
+                        seatColor = '#dbeafe'; // blue.shade100
+                    }
+
+                    seatDiv.style.backgroundColor = seatColor;
+
+                    let html = `<div class="seat-number">№${seat.seat_number}`;
+                    if (seat.booking && seat.booking.customer_name) {
+                        html += ` — ${seat.booking.customer_name}`;
+                    }
+                    html += `</div>`;
+
+                    if (seat.status === 'booked' && seat.booking) {
+                        html += `<div class="seat-info">`;
+                        if (seat.booking.passenger_type) {
+                            html += `${getPassengerTypeText(seat.booking.passenger_type)}<br>`;
+                        }
+                        if (seat.booking.stop_title) {
+                            html += `${seat.booking.stop_title}<br>`;
+                        }
+                        if (seat.booking.customer_phone) {
+                            html += `${seat.booking.customer_phone}<br>`;
+                        }
+                        if (seat.booked_by_info) {
+                            const sellerColor = seat.booked_by_info.color || '#3b82f6';
+                            html += `<strong style="color: ${sellerColor};">${seat.booked_by_info.name}</strong>`;
+                        }
+                        html += `</div>`;
+                    } else if (seat.status === 'available') {
+                        html += `<div class="seat-info">Свободно</div>`;
+                    } else {
+                        html += `<div class="seat-info">Занято</div>`;
+                    }
+
+                    seatDiv.innerHTML = html;
+                    grid.appendChild(seatDiv);
+                });
+
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+                statusDiv.textContent = `❌ Ошибка: ${error.message}`;
+                grid.innerHTML = `<div style="padding: 20px; text-align: center; color: #ef4444;">Ошибка загрузки данных: ${error.message}</div>`;
+            }
+        }
+
+        // Загружаем данные при загрузке страницы
+        window.onload = function() {
+            loadRealData();
+        };
+    </script>
+</body>
+</html>

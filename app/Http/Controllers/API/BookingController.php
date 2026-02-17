@@ -44,11 +44,11 @@ class BookingController extends Controller
             // Старый формат
             'seat_numbers' => $hasOldFormat ? 'required|array' : 'sometimes|array',
             'seat_numbers.*' => $hasOldFormat ? 'integer|min:1|max:100' : 'sometimes|integer|min:1|max:100',
-            'passenger_type' => $hasOldFormat ? 'required|in:adult,child,senior,disabled,special' : 'sometimes|in:adult,child,senior,disabled,special',
+            'passenger_type' => $hasOldFormat ? 'required|in:adult,child,senior,disabled,special,concession' : 'sometimes|in:adult,child,senior,disabled,special,concession',
             // Новый формат
             'seats' => $hasNewFormat ? 'required|array' : 'sometimes|array',
             'seats.*.seat_number' => $hasNewFormat ? 'required|integer|min:1|max:100' : 'sometimes|integer|min:1|max:100',
-            'seats.*.passenger_type' => $hasNewFormat ? 'required|in:adult,child,senior,disabled,special' : 'sometimes|in:adult,child,senior,disabled,special',
+            'seats.*.passenger_type' => $hasNewFormat ? 'required|in:adult,child,senior,disabled,special,concession' : 'sometimes|in:adult,child,senior,disabled,special,concession',
             'seats.*.customer_name' => $hasNewFormat ? 'required|string|max:255' : 'sometimes|string|max:255',
             'seats.*.customer_phone' => $hasNewFormat ? 'required|string|max:20' : 'sometimes|string|max:20',
         ]);
@@ -88,6 +88,18 @@ class BookingController extends Controller
         if (!$excursion->is_active) {
             throw ValidationException::withMessages([
                 'excursion_id' => ['This excursion is not available for booking.'],
+            ]);
+        }
+
+        // Проверяем, не отменена ли экскурсия на эту дату и время
+        $targetDateTime = Carbon::parse($targetDate . ' ' . $targetTime);
+        $isCancelled = \App\Models\CancelledExcursionDate::where('excursion_id', $excursion->id)
+            ->where('date_time', $targetDateTime->format('Y-m-d H:i:s'))
+            ->exists();
+        
+        if ($isCancelled) {
+            throw ValidationException::withMessages([
+                'excursion_id' => ['Эта экскурсия отменена на указанную дату и время.'],
             ]);
         }
 
@@ -212,6 +224,13 @@ class BookingController extends Controller
                 'with_entry' => $withEntry,
                 'stop_id' => $request->stop_id,
                 'booked_at' => now(),
+            ]);
+
+            // Обновляем поле booked_by в bus_seats для отображения в схеме рассадки
+            $seat->update([
+                'booked_by' => $bookedByUserId,
+                'booked_at' => now(),
+                'status' => 'booked',
             ]);
 
             // Создаем транзакцию в кошельке продавца (того, от лица кого бронируем)
@@ -643,34 +662,17 @@ class BookingController extends Controller
         $user = $request->user();
         $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
         
-        // Если передан массив ID бронирований через query параметр, используем их напрямую
-        // Это самый надежный способ - используем данные, которые мы только что создали
+        // Если передан массив ID бронирований через query параметр
+        // Laravel автоматически парсит ids[]=827&ids[]=828 в массив через input('ids')
         $bookingIds = $request->input('ids');
         
-        // Также пробуем получить через query() напрямую
-        if (!$bookingIds || !is_array($bookingIds)) {
+        // Если не массив, пробуем через query
+        if (!is_array($bookingIds)) {
             $bookingIds = $request->query('ids');
         }
         
-        // Пробуем получить как массив с индексами ids[0], ids[1] и т.д.
-        if ((!$bookingIds || !is_array($bookingIds)) && $request->has('ids')) {
-            $allIds = [];
-            $queryParams = $request->query();
-            foreach ($queryParams as $key => $value) {
-                if (preg_match('/^ids\[(\d+)\]$/', $key, $matches)) {
-                    $allIds[] = (int) $value;
-                }
-            }
-            if (!empty($allIds)) {
-                $bookingIds = $allIds;
-            }
-        }
-        
-        // Логируем все query параметры для отладки
-        \Log::info("PDF generation request. Booking ID: {$id}");
-        \Log::info("PDF generation request. User ID: {$user->id}, Is Admin: " . ($isAdmin ? 'yes' : 'no'));
-        \Log::info("PDF generation request. All query params: " . json_encode($request->query()));
-        \Log::info("PDF generation request. IDs input: " . json_encode($bookingIds) . ", Type: " . gettype($bookingIds));
+        // Логируем для отладки
+        \Log::info("PDF request ID={$id}, input('ids')=" . json_encode($request->input('ids')) . ", query('ids')=" . json_encode($request->query('ids')) . ", final=" . json_encode($bookingIds));
         
         if ($bookingIds && is_array($bookingIds) && !empty($bookingIds)) {
             // Преобразуем в массив целых чисел
@@ -712,7 +714,7 @@ class BookingController extends Controller
 
             // Ищем все бронирования, созданные тем же пользователем на ту же экскурсию и дату
             // Имена клиентов могут быть разные, поэтому не используем customer_name/customer_phone
-            $allBookings = Booking::with(['excursion', 'stop', 'busSeat'])
+            $allBookings = Booking::with(['excursion.prices', 'stop', 'busSeat'])
                 ->where('excursion_id', $booking->excursion_id)
                 ->where('excursion_date', $booking->excursion_date)
                 ->where('booked_by', $booking->booked_by);
@@ -760,6 +762,10 @@ class BookingController extends Controller
             $allBookings = $allBookings->isEmpty() ? collect([$booking]) : $allBookings->push($booking);
         }
 
+        // Загружаем экскурсию с ценами, если еще не загружена
+        if (!$booking->relationLoaded('excursion') || !$booking->excursion->relationLoaded('prices')) {
+            $booking->load(['excursion.prices']);
+        }
         $excursion = $booking->excursion;
         $stop = $booking->stop;
         $bookedBy = $booking->bookedByUser?->name ?? 'Неизвестный продавец';
@@ -788,7 +794,11 @@ class BookingController extends Controller
         // Подготавливаем данные о пассажирах
         $passengers = [];
         $total = 0;
+        
+        \Log::info("PDF: Starting to process {$allBookings->count()} bookings for passengers");
+        
         foreach ($allBookings as $b) {
+            \Log::info("PDF: Processing booking ID={$b->id}, has_busSeat=" . ($b->busSeat ? 'yes' : 'no') . ", price={$b->price}, passenger_type={$b->passenger_type}");
             // Пропускаем бронирования без места
             if (!$b->busSeat) {
                 \Log::warning("Booking {$b->id} has no busSeat. Skipping.");
@@ -801,6 +811,7 @@ class BookingController extends Controller
                 'senior' => 'Пенсионер',
                 'disabled' => 'Инвалид',
                 'special' => 'Спеццена',
+                'concession' => 'Льготный',
             ];
             
             // Проверяем, что цена не null и не 0
@@ -809,6 +820,10 @@ class BookingController extends Controller
             
             if ($bookingPrice <= 0) {
                 // Если цена 0 или null, пытаемся получить цену из тарифа
+                // Убеждаемся, что prices загружены
+                if (!$excursion->relationLoaded('prices')) {
+                    $excursion->load('prices');
+                }
                 $tariff = $excursion->prices->firstWhere('passenger_type', $b->passenger_type);
                 if ($tariff) {
                     if ($withEntry) {
@@ -824,11 +839,16 @@ class BookingController extends Controller
                 \Log::warning("Booking {$b->id} has zero price. Passenger type: {$b->passenger_type}, With entry: " . ($withEntry ? 'yes' : 'no'));
             }
             
+            // Получаем тип пассажира (переводим на русский)
+            $passengerTypeLabel = $passengerTypeLabels[$b->passenger_type] ?? $b->passenger_type;
+            
             $passengers[] = [
                 'seat_number' => $b->busSeat->seat_number,
-                'passenger_type' => $passengerTypeLabels[$b->passenger_type] ?? $b->passenger_type,
+                'passenger_type' => $passengerTypeLabel,
                 'price' => $bookingPrice,
                 'with_entry' => $withEntry,
+                'customer_name' => $b->customer_name ?? null,
+                'customer_phone' => $b->customer_phone ?? null,
             ];
             $total += $bookingPrice;
         }
@@ -842,13 +862,19 @@ class BookingController extends Controller
                 'senior' => 'Пенсионер',
                 'disabled' => 'Инвалид',
                 'special' => 'Спеццена',
+                'concession' => 'Льготный',
             ];
             
             $bookingPrice = (float)($booking->price ?? 0);
             $withEntry = (bool)($booking->with_entry ?? false);
             
             if ($bookingPrice <= 0) {
-                $tariff = $excursion->prices->firstWhere('passenger_type', $booking->passenger_type);
+                // Убеждаемся, что prices загружены
+                if (!$excursion->relationLoaded('prices')) {
+                    $excursion->load('prices');
+                }
+                $passengerType = $booking->passenger_type ?? 'adult';
+                $tariff = $excursion->prices->firstWhere('passenger_type', $passengerType);
                 if ($tariff) {
                     if ($withEntry) {
                         $bookingPrice = (float)($tariff->price_with_entry ?? $tariff->price ?? 0);
@@ -858,15 +884,72 @@ class BookingController extends Controller
                 }
             }
             
+            $passengerType = $booking->passenger_type ?? 'adult';
             $passengers[] = [
                 'seat_number' => $booking->busSeat->seat_number,
-                'passenger_type' => $passengerTypeLabels[$booking->passenger_type] ?? $booking->passenger_type,
-                'price' => $bookingPrice,
+                'passenger_type' => $passengerTypeLabels[$passengerType] ?? $passengerType,
+                'price' => $bookingPrice > 0 ? $bookingPrice : 0,
                 'with_entry' => $withEntry,
+                'customer_name' => $booking->customer_name ?? null,
+                'customer_phone' => $booking->customer_phone ?? null,
             ];
-            $total = $bookingPrice;
+            $total = $bookingPrice > 0 ? $bookingPrice : 0;
+        }
+        
+        // Логируем данные для отладки
+        \Log::info("PDF ticket data: allBookings count = " . $allBookings->count());
+        \Log::info("PDF ticket data: passengers count = " . count($passengers));
+        \Log::info("PDF ticket data: total amount = " . $total);
+        foreach ($passengers as $idx => $p) {
+            \Log::info("Passenger {$idx}: seat={$p['seat_number']}, type={$p['passenger_type']}, price={$p['price']}, with_entry=" . ($p['with_entry'] ? 'yes' : 'no'));
+        }
+        
+        // Дополнительная проверка: логируем все бронирования
+        foreach ($allBookings as $idx => $b) {
+            \Log::info("Booking {$idx} (ID={$b->id}): seat_id={$b->bus_seat_id}, price={$b->price}, passenger_type={$b->passenger_type}, has_busSeat=" . ($b->busSeat ? 'yes' : 'no'));
         }
 
+        // Проверяем, что есть пассажиры
+        if (empty($passengers)) {
+            \Log::error("PDF generation: No passengers found! allBookings count: {$allBookings->count()}");
+            // Если нет пассажиров, но есть исходное бронирование, создаем хотя бы одного
+            if ($booking->busSeat) {
+                $passengerTypeLabels = [
+                    'adult' => 'Взрослый',
+                    'child' => 'Ребенок',
+                    'senior' => 'Пенсионер',
+                    'disabled' => 'Инвалид',
+                    'special' => 'Спеццена',
+                ];
+                $bookingPrice = (float)($booking->price ?? 0);
+                if ($bookingPrice <= 0 && $excursion->relationLoaded('prices')) {
+                    $tariff = $excursion->prices->firstWhere('passenger_type', $booking->passenger_type ?? 'adult');
+                    if ($tariff) {
+                        $withEntry = (bool)($booking->with_entry ?? false);
+                        if ($withEntry) {
+                            $bookingPrice = (float)($tariff->price_with_entry ?? $tariff->price ?? 0);
+                        } else {
+                            $bookingPrice = (float)($tariff->price_without_entry ?? $tariff->price ?? 0);
+                        }
+                    }
+                }
+                $passengerType = $booking->passenger_type ?? 'adult';
+                $passengers[] = [
+                    'seat_number' => $booking->busSeat->seat_number,
+                    'passenger_type' => $passengerTypeLabels[$passengerType] ?? $passengerType,
+                    'price' => $bookingPrice > 0 ? $bookingPrice : 0,
+                    'with_entry' => (bool)($booking->with_entry ?? false),
+                    'customer_name' => $booking->customer_name ?? null,
+                    'customer_phone' => $booking->customer_phone ?? null,
+                ];
+                $total = $bookingPrice > 0 ? $bookingPrice : 0;
+            }
+        }
+
+        // Логируем финальные данные перед передачей в шаблон
+        \Log::info("PDF template data: passengers count = " . count($passengers) . ", total = {$total}");
+        \Log::info("PDF template data: passengers = " . json_encode($passengers));
+        
         // Генерируем HTML для PDF
         $html = view('pdf.ticket', [
             'ticketNumber' => $ticketNumber,
@@ -883,7 +966,9 @@ class BookingController extends Controller
 
         // Генерируем PDF
         $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('a4', 'portrait');
+        // A4: 210x297 мм
+        // В points: 1mm = 2.83465 points, поэтому 210mm = 595.28 points, 297mm = 842.00 points
+        $pdf->setPaper('a4', 'portrait'); // A4 формат
         $pdf->setOption('defaultFont', 'dejavu sans');
         $pdf->setOption('isRemoteEnabled', true);
         $pdf->setOption('isHtml5ParserEnabled', true);

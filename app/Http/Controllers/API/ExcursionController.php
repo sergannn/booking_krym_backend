@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Excursion;
 use App\Models\UnscheduledExcursionDate;
+use App\Models\CancelledExcursionDate;
 use App\Services\ExcursionScheduler;
 use MoonShine\Laravel\Models\MoonshineUser;
 use Illuminate\Http\Request;
@@ -24,7 +25,12 @@ class ExcursionController extends Controller
         $isStaff = $user && in_array((int) $user->moonshine_user_role_id, [3, 5], true);
 
         // Всегда подтягиваем бронирования, чтобы считать занятость мест на конкретную дату
-        $relations = ['busSeats', 'assignedUsers', 'prices', 'staffPrices', 'bookings.stop', 'unscheduledDates'];
+        $relations = ['busSeats', 'assignedUsers', 'prices', 'staffPrices', 'bookings.stop', 'unscheduledDates', 'cancelledDates'];
+        
+        // Для админов также загружаем удаленные внеплановые даты
+        if ($isAdmin) {
+            $relations[] = 'allUnscheduledDates';
+        }
 
         $query = Excursion::with($relations)->with('scheduleTemplate.scheduleDays');
         
@@ -58,7 +64,7 @@ class ExcursionController extends Controller
 
         // Водитель/экскурсовод видит только свои назначенные экскурсии
         // (назначенные без даты = на все даты, или на конкретную дату)
-        if ($isStaff) {
+        if ($isStaff && $user) {
             $query->whereHas('assignedUsers', function($q) use ($user) {
                 $q->where('moonshine_users.id', $user->id);
             });
@@ -69,8 +75,10 @@ class ExcursionController extends Controller
         // Разворачиваем экскурсии по датам из schedule_by_date
         // Для каждой экскурсии-шаблона создаем отдельные записи для каждой даты
         $expandedExcursions = collect();
+        // Для админов и продавцов показываем прошедшие экскурсии (30 дней назад) для возможности бронирования задним числом
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2); // role_id 2 = продавец
         foreach ($excursions as $excursion) {
-            $transformed = $this->transformExcursion($excursion, $isStaff);
+            $transformed = $this->transformExcursion($excursion, $isStaff, $includePast);
             $bookingsBySeat = $excursion->bookings->groupBy('bus_seat_id');
             $scheduleByDate = $transformed['schedule_by_date'] ?? [];
             $buildBusSeats = function (?string $targetDate, ?string $targetTime) use ($excursion, $bookingsBySeat, $isStaff) {
@@ -78,29 +86,84 @@ class ExcursionController extends Controller
                     $matchingBooking = null;
                     $seatBookings = $bookingsBySeat->get($seat->id, collect());
                     if ($targetDate !== null && $targetTime !== null) {
-                        $matchingBooking = $seatBookings->first(function ($booking) use ($targetDate, $targetTime) {
-                            if (!$booking->excursion_date || !$booking->time) {
+                        // Отладка для мест №14 и №20
+                        if (in_array($seat->seat_number, [14, 20])) {
+                            \Log::info("🔍 Поиск booking для места №{$seat->seat_number}:");
+                            \Log::info("   targetDate: $targetDate, targetTime: $targetTime");
+                            \Log::info("   Всего бронирований для этого места: " . $seatBookings->count());
+                            foreach ($seatBookings as $b) {
+                                $rawDate = $b->getRawOriginal('excursion_date');
+                                $bookingTime = is_string($b->time) ? substr($b->time, 0, 5) : $b->time->format('H:i');
+                                $bookingDate = is_string($rawDate) ? substr($rawDate, 0, 10) : $rawDate->format('Y-m-d');
+                                \Log::info("   Booking ID={$b->id}: date=$bookingDate, time=$bookingTime, customer={$b->customer_name}");
+                            }
+                        }
+                        
+                        $matchingBooking = $seatBookings->first(function ($booking) use ($targetDate, $targetTime, $seat) {
+                            if (!$booking->time) {
+                                if (in_array($seat->seat_number, [14, 20])) {
+                                    \Log::info("   ❌ Booking ID={$booking->id}: нет времени");
+                                }
                                 return false;
                             }
+                            // Используем getRawOriginal для получения исходной даты из БД
+                            // (аксессор getExcursionDateAttribute переопределяет стандартный доступ)
+                            $rawExcursionDate = $booking->getRawOriginal('excursion_date');
+                            if (!$rawExcursionDate) {
+                                if (in_array($seat->seat_number, [14, 20])) {
+                                    \Log::info("   ❌ Booking ID={$booking->id}: нет даты");
+                                }
+                                return false;
+                            }
+                            
+                            // Нормализуем время до HH:MM (как в bookSeats)
                             $bookingTime = is_string($booking->time)
                                 ? substr($booking->time, 0, 5) // нормализуем до HH:MM
                                 : $booking->time->format('H:i');
-                            $bookingDate = is_string($booking->excursion_date)
-                                ? $booking->excursion_date
-                                : $booking->excursion_date->format('Y-m-d');
-                            return $bookingDate === $targetDate && $bookingTime === $targetTime;
+                            
+                            // Нормализуем дату до Y-m-d (обрезаем время, если есть)
+                            $bookingDate = is_string($rawExcursionDate)
+                                ? substr($rawExcursionDate, 0, 10) // обрезаем до YYYY-MM-DD
+                                : $rawExcursionDate->format('Y-m-d');
+                            
+                            $matches = $bookingDate === $targetDate && $bookingTime === $targetTime;
+                            
+                            if (in_array($seat->seat_number, [14, 20])) {
+                                \Log::info("   Проверка Booking ID={$booking->id}: bookingDate=$bookingDate vs targetDate=$targetDate, bookingTime=$bookingTime vs targetTime=$targetTime -> " . ($matches ? "✅ СОВПАЛО" : "❌ НЕ СОВПАЛО"));
+                            }
+                            
+                            return $matches;
                         });
+                        
+                        if (in_array($seat->seat_number, [14, 20])) {
+                            \Log::info("   Результат поиска: " . ($matchingBooking ? "✅ НАЙДЕН (ID={$matchingBooking->id})" : "❌ НЕ НАЙДЕН"));
+                            \Log::info("   isStaff: " . ($isStaff ? "true" : "false"));
+                        }
                     }
 
                     $data = [
                         'id' => $seat->id,
                         'seat_number' => $seat->seat_number,
                         'status' => $matchingBooking ? 'booked' : 'available',
-                        'booked_by' => $matchingBooking?->booked_by,
-                        'booked_at' => $matchingBooking?->booked_at?->toISOString(),
+                        'booked_by' => $matchingBooking?->booked_by ?? $seat->booked_by,
+                        'booked_at' => $matchingBooking?->booked_at?->toIso8601String() ?? $seat->booked_at?->toIso8601String(),
                     ];
 
-                    if ($isStaff && $matchingBooking) {
+                    // Добавляем информацию о том, кто забронировал (имя и цвет)
+                    $bookedByUserId = $matchingBooking?->booked_by ?? $seat->booked_by;
+                    if ($bookedByUserId) {
+                        $bookedByUser = \MoonShine\Laravel\Models\MoonshineUser::find($bookedByUserId);
+                        if ($bookedByUser) {
+                            $data['booked_by_info'] = [
+                                'id' => $bookedByUser->id,
+                                'name' => $bookedByUser->name,
+                                'color' => $bookedByUser->color,
+                            ];
+                        }
+                    }
+
+                    // Возвращаем информацию о клиенте для персонала и админов
+                    if ( $matchingBooking) {
                         $data['booking'] = [
                             'customer_name' => $matchingBooking->customer_name,
                             'customer_phone' => $matchingBooking->customer_phone,
@@ -127,6 +190,23 @@ class ExcursionController extends Controller
                 $transformed['is_unscheduled'] = false; // Старые экскурсии без расписания не считаются внеплановыми
                 
                 $expandedExcursions->push($transformed);
+                
+                // Добавляем удаленные внеплановые даты как отдельные записи (только для админов)
+                if ($isAdmin && isset($transformed['deleted_unscheduled_dates']) && !empty($transformed['deleted_unscheduled_dates'])) {
+                    foreach ($transformed['deleted_unscheduled_dates'] as $deletedDate) {
+                        $deletedDateTime = \Carbon\Carbon::parse($deletedDate['date_time']);
+                        $deletedExcursionData = array_merge($transformed, [
+                            'date_time' => $deletedDate['date_time'],
+                            'date' => $deletedDateTime->format('Y-m-d'),
+                            'time' => $deletedDateTime->format('H:i'),
+                            'is_unscheduled' => true,
+                            'is_deleted' => true,
+                            'unscheduled_date_id' => $deletedDate['id'],
+                            'deleted_at' => $deletedDate['deleted_at'],
+                        ]);
+                        $expandedExcursions->push($deletedExcursionData);
+                    }
+                }
             } else {
                 // Для персонала: показываем бронирования только в первой записи (основной)
                 // Для остальных дат убираем детали бронирований, чтобы не дублировать
@@ -175,6 +255,9 @@ class ExcursionController extends Controller
                         'date' => $scheduleItem['date'],
                         'time' => $scheduleItem['time'],
                         'is_unscheduled' => $scheduleItem['is_unscheduled'] ?? false,
+                        'is_cancelled' => $scheduleItem['is_cancelled'] ?? false,
+                        'unscheduled_date_id' => $scheduleItem['unscheduled_date_id'] ?? null,
+                        'deleted_unscheduled_dates' => $transformed['deleted_unscheduled_dates'] ?? [],
                     ]);
 
                     // Пересчитываем занятость мест для выбранной даты/времени
@@ -213,6 +296,8 @@ class ExcursionController extends Controller
         $user = $request->user('sanctum') ?? $request->user();
         $isAdmin = $user && ($user->isSuperUser() || (int) $user->moonshine_user_role_id === 1);
         $includeBookingDetails = $user && in_array((int) $user->moonshine_user_role_id, [3, 5], true);
+        // Для админов и продавцов тоже показываем прошедшие экскурсии
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2);
 
         $relations = ['busSeats', 'assignedUsers', 'prices', 'staffPrices'];
 
@@ -231,7 +316,7 @@ class ExcursionController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'data' => $this->transformExcursion($excursion, $includeBookingDetails),
+            'data' => $this->transformExcursion($excursion, $includeBookingDetails, $includePast),
         ]);
     }
 
@@ -283,7 +368,7 @@ class ExcursionController extends Controller
 
         return response()->json([
             'message' => 'Экскурсия создана',
-            'data' => $this->transformExcursion($excursion),
+            'data' => $this->transformExcursion($excursion, false, false),
         ], 201);
     }
 
@@ -321,10 +406,43 @@ class ExcursionController extends Controller
 
         $excursion->load(['unscheduledDates']);
 
+        $user = $request->user();
+        $isAdmin = $user && ($user->isSuperUser() || (int) $user->moonshine_user_role_id === 1);
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2);
+        
         return response()->json([
             'message' => 'Внеплановая дата добавлена',
-            'data' => $this->transformExcursion($excursion),
+            'data' => $this->transformExcursion($excursion, false, $includePast),
         ], 201);
+    }
+
+    /**
+     * Удалить внеплановую дату экскурсии
+     */
+    public function deleteUnscheduledDate(Request $request, $id, $dateId)
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isSuperUser() && (int) $user->moonshine_user_role_id !== 1)) {
+            abort(403, 'Недостаточно прав для удаления внеплановой даты.');
+        }
+
+        $excursion = Excursion::findOrFail($id);
+        $unscheduledDate = $excursion->unscheduledDates()->findOrFail($dateId);
+
+        // Помечаем как удаленную (soft delete)
+        $unscheduledDate->markAsDeleted();
+
+        $excursion->load(['unscheduledDates']);
+
+        $user = $request->user();
+        $isAdmin = $user && ($user->isSuperUser() || (int) $user->moonshine_user_role_id === 1);
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2);
+        
+        return response()->json([
+            'message' => 'Внеплановая дата удалена',
+            'data' => $this->transformExcursion($excursion, false, $includePast),
+        ], 200);
     }
 
     /**
@@ -447,7 +565,7 @@ class ExcursionController extends Controller
         ]);
     }
 
-    private function transformExcursion(Excursion $excursion, bool $includeBookingDetails = false): array
+    private function transformExcursion(Excursion $excursion, bool $includeBookingDetails = false, bool $includePast = false): array
     {
         // Для ускорения получаем коллекцию бронирований по bus_seat_id
         $bookingsBySeat = $includeBookingDetails
@@ -490,9 +608,16 @@ class ExcursionController extends Controller
         // Это поможет Flutter группировать экскурсии по датам
         $scheduleByDate = [];
         if (!empty($schedule)) {
-            // Генерируем даты на ближайшие 60 дней для каждого дня недели из расписания
-            $startDate = \Carbon\Carbon::now()->startOfDay();
-            for ($i = 0; $i < 60; $i++) {
+            // Для персонала (водителей/гидов) показываем и прошедшие экскурсии (30 дней назад + 60 дней вперед)
+            // Для админов и продавцов тоже показываем прошедшие (30 дней назад) для возможности бронирования задним числом
+            // Для остальных - только будущие (60 дней вперед)
+            $daysBack = ($includeBookingDetails || $includePast) ? 30 : 0;
+            $daysForward = 30;
+            
+            $startDate = \Carbon\Carbon::now()->startOfDay()->subDays($daysBack);
+            $totalDays = $daysBack + $daysForward;
+            
+            for ($i = 0; $i < $totalDays; $i++) {
                 $date = $startDate->copy()->addDays($i);
                 $dateWeekday = $date->isoWeekday();
                 
@@ -508,28 +633,60 @@ class ExcursionController extends Controller
                     }
                     $dateTime = \Carbon\Carbon::parse($date->format('Y-m-d') . ' ' . $time);
                     
+                    // Проверяем, не отменена ли эта дата
+                    $isCancelled = $excursion->cancelledDates->contains(function ($cancelled) use ($dateTime) {
+                        $cancelledDateTime = \Carbon\Carbon::parse($cancelled->date_time);
+                        return $cancelledDateTime->format('Y-m-d H:i') === $dateTime->format('Y-m-d H:i');
+                    });
+                    
+                    // НЕ пропускаем отмененные даты - показываем их с флагом is_cancelled
                     $scheduleByDate[] = [
                         'date' => $date->format('Y-m-d'),
-                        'date_time' => $dateTime->toISOString(),
+                        'date_time' => $dateTime->toIso8601String(),
                         'weekday' => $dateWeekday,
                         'weekday_name' => $scheduleForDay['weekday_name'] ?? '',
                         'time' => $time,
                         'is_unscheduled' => false,
+                        'is_cancelled' => $isCancelled,
                     ];
                 }
             }
         }
         
         // Добавляем внеплановые даты
+        // Для персонала, админов и продавцов показываем и прошедшие (30 дней назад), для остальных - только будущие
+        $now = \Carbon\Carbon::now();
+        $pastLimit = ($includeBookingDetails || $includePast) ? \Carbon\Carbon::now()->subDays(30) : $now;
+        
         foreach ($excursion->unscheduledDates as $unscheduledDate) {
             $dateTime = \Carbon\Carbon::parse($unscheduledDate->date_time);
+            
+            // Для персонала, админов и продавцов показываем прошедшие за последние 30 дней, для остальных - только будущие
+            if (!($includeBookingDetails || $includePast) && $dateTime->isPast()) {
+                continue;
+            }
+            
+            // Для персонала, админов и продавцов пропускаем только очень старые (старше 30 дней)
+            if (($includeBookingDetails || $includePast) && $dateTime->isBefore($pastLimit)) {
+                continue;
+            }
+            
+            // Проверяем, не отменена ли эта внеплановая дата
+            $isCancelled = $excursion->cancelledDates->contains(function ($cancelled) use ($dateTime) {
+                $cancelledDateTime = \Carbon\Carbon::parse($cancelled->date_time);
+                return $cancelledDateTime->format('Y-m-d H:i') === $dateTime->format('Y-m-d H:i');
+            });
+            
+            // НЕ пропускаем отмененные даты - показываем их с флагом is_cancelled
             $scheduleByDate[] = [
                 'date' => $dateTime->format('Y-m-d'),
-                'date_time' => $dateTime->toISOString(),
+                'date_time' => $dateTime->toIso8601String(),
                 'weekday' => $dateTime->isoWeekday(),
                 'weekday_name' => '',
                 'time' => $dateTime->format('H:i'),
                 'is_unscheduled' => true,
+                'is_cancelled' => $isCancelled,
+                'unscheduled_date_id' => $unscheduledDate->id, // Добавляем ID для удаления
             ];
         }
         
@@ -538,11 +695,11 @@ class ExcursionController extends Controller
             return strcmp($a['date_time'], $b['date_time']);
         });
 
-        return [
+        $result = [
             'id' => $excursion->id,
             'title' => $excursion->title,
             'description' => $excursion->description,
-            'date_time' => $excursion->date_time?->toISOString(),
+            'date_time' => $excursion->date_time?->toIso8601String(),
             'date' => $excursion->date_time?->format('Y-m-d'),
             'time' => $excursion->date_time?->format('H:i'),
             'schedule' => $schedule,
@@ -569,8 +726,20 @@ class ExcursionController extends Controller
                     'seat_number' => $seat->seat_number,
                     'status' => $seat->status,
                     'booked_by' => $seat->booked_by,
-                    'booked_at' => $seat->booked_at?->toISOString(),
+                    'booked_at' => $seat->booked_at?->toIso8601String(),
                 ];
+
+                // Добавляем информацию о том, кто забронировал (имя и цвет)
+                if ($seat->booked_by) {
+                    $bookedByUser = \MoonShine\Laravel\Models\MoonshineUser::find($seat->booked_by);
+                    if ($bookedByUser) {
+                        $data['booked_by_info'] = [
+                            'id' => $bookedByUser->id,
+                            'name' => $bookedByUser->name,
+                            'color' => $bookedByUser->color,
+                        ];
+                    }
+                }
 
                 if ($includeBookingDetails && $bookingsBySeat->has($seat->id)) {
                     $booking = $bookingsBySeat->get($seat->id);
@@ -605,6 +774,20 @@ class ExcursionController extends Controller
                 ];
             })->values(),
         ];
+        
+        // Добавляем удаленные внеплановые даты для админов
+        if ($excursion->relationLoaded('allUnscheduledDates') && $excursion->allUnscheduledDates) {
+            $deletedDates = $excursion->allUnscheduledDates->whereNotNull('deleted_at');
+            $result['deleted_unscheduled_dates'] = $deletedDates->map(function ($date) {
+                return [
+                    'id' => $date->id,
+                    'date_time' => $date->date_time ? $date->date_time->toIso8601String() : null,
+                    'deleted_at' => $date->deleted_at ? $date->deleted_at->toIso8601String() : null,
+                ];
+            })->values();
+        }
+        
+        return $result;
     }
 
     public function updatePrices(Request $request, $id)
@@ -642,11 +825,16 @@ class ExcursionController extends Controller
             'prices.special.price_with_entry' => 'nullable|numeric|min:0',
             'prices.special.seller_commission_percent' => 'required|numeric|min:0|max:100',
             'prices.special.partner_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.concession.price' => 'required|numeric|min:0',
+            'prices.concession.price_without_entry' => 'nullable|numeric|min:0',
+            'prices.concession.price_with_entry' => 'nullable|numeric|min:0',
+            'prices.concession.seller_commission_percent' => 'required|numeric|min:0|max:100',
+            'prices.concession.partner_commission_percent' => 'required|numeric|min:0|max:100',
         ]);
 
         $excursion = Excursion::with('prices')->findOrFail($id);
 
-        $types = ['adult', 'child', 'senior', 'disabled', 'special'];
+        $types = ['adult', 'child', 'senior', 'disabled', 'special', 'concession'];
         
         // Подготавливаем данные для обновления таблицы excursions
         $excursionUpdateData = [];
@@ -712,9 +900,13 @@ class ExcursionController extends Controller
 
         $excursion->refresh()->load(['busSeats', 'assignedUsers', 'prices', 'staffPrices']);
 
+        $user = $request->user();
+        $isAdmin = $user && ($user->isSuperUser() || (int) $user->moonshine_user_role_id === 1);
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2);
+        
         return response()->json([
             'message' => 'Тарифы обновлены',
-            'data' => $this->transformExcursion($excursion),
+            'data' => $this->transformExcursion($excursion, false, $includePast),
         ]);
     }
 
@@ -754,9 +946,13 @@ class ExcursionController extends Controller
 
         $excursion->refresh()->load(['busSeats', 'assignedUsers', 'prices', 'staffPrices']);
 
+        $user = $request->user();
+        $isAdmin = $user && ($user->isSuperUser() || (int) $user->moonshine_user_role_id === 1);
+        $includePast = $isAdmin || ($user && (int) $user->moonshine_user_role_id === 2);
+        
         return response()->json([
             'message' => 'Цены персонала обновлены',
-            'data' => $this->transformExcursion($excursion),
+            'data' => $this->transformExcursion($excursion, false, $includePast),
         ]);
     }
 
@@ -835,7 +1031,7 @@ class ExcursionController extends Controller
                 'excursion' => [
                     'id' => $excursion->id,
                     'title' => $excursion->title,
-                    'date_time' => $excursion->date_time?->toISOString(),
+                    'date_time' => $excursion->date_time?->toIso8601String(),
                 ],
                 'income' => round($income, 2), // Доход (выручка)
                 'total_revenue' => round($totalRevenue, 2), // Для обратной совместимости
@@ -861,12 +1057,10 @@ class ExcursionController extends Controller
     }
 
     /**
-     * Получить шаблоны расписания экскурсий
+     * Получить шаблоны расписания экскурсий из базы данных
      */
     public function schedule(Request $request)
     {
-        $templates = Config::get('excursion_schedule.templates', []);
-        
         $weekdays = [
             1 => 'Понедельник',
             2 => 'Вторник',
@@ -877,29 +1071,175 @@ class ExcursionController extends Controller
             7 => 'Воскресенье',
         ];
         
-        $schedule = collect($templates)->map(function ($template, $index) use ($weekdays) {
+        // Получаем все экскурсии с их расписанием из БД
+        $excursions = Excursion::with('scheduleTemplate.scheduleDays')
+            ->orderBy('title', 'asc')
+            ->get();
+        
+        $schedule = $excursions->map(function ($excursion) use ($weekdays) {
             $scheduleData = [];
-            foreach ($weekdays as $dayNum => $dayName) {
-                $time = $template['schedule'][$dayNum] ?? null;
-                if ($time) {
+            
+            if ($excursion->scheduleTemplate && $excursion->scheduleTemplate->scheduleDays) {
+                foreach ($excursion->scheduleTemplate->scheduleDays as $scheduleDay) {
+                    $time = is_string($scheduleDay->time) 
+                        ? (strlen($scheduleDay->time) >= 5 ? substr($scheduleDay->time, 0, 5) : $scheduleDay->time)
+                        : $scheduleDay->time->format('H:i');
+                    
                     $scheduleData[] = [
-                        'day_number' => $dayNum,
-                        'day_name' => $dayName,
+                        'day_number' => $scheduleDay->weekday,
+                        'day_name' => $weekdays[$scheduleDay->weekday] ?? "День {$scheduleDay->weekday}",
                         'time' => $time,
                     ];
                 }
             }
             
             return [
-                'id' => $index + 1,
-                'title' => $template['title'] ?? '',
-                'description' => $template['description'] ?? '',
+                'id' => $excursion->id,
+                'title' => $excursion->title,
+                'description' => $excursion->description ?? '',
                 'schedule' => $scheduleData,
             ];
+        })->filter(function ($item) {
+            // Фильтруем только те экскурсии, у которых есть расписание
+            return !empty($item['schedule']);
         });
         
         return response()->json([
             'data' => $schedule->values(),
         ]);
+    }
+
+    /**
+     * Отменить экскурсию на конкретную дату и время
+     */
+    public function cancelDate(Request $request, $id)
+    {
+        $user = $request->user();
+        $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
+        
+        if (!$isAdmin) {
+            abort(403, 'Only admins can cancel excursions');
+        }
+
+        $request->validate([
+            'date_time' => 'required|date',
+        ]);
+
+        $excursion = Excursion::findOrFail($id);
+        $dateTime = \Carbon\Carbon::parse($request->input('date_time'));
+
+        // Проверяем, не отменена ли уже эта дата
+        $existing = \App\Models\CancelledExcursionDate::where('excursion_id', $excursion->id)
+            ->where('date_time', $dateTime->format('Y-m-d H:i:s'))
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Эта дата уже отменена',
+            ], 422);
+        }
+
+        // Создаем запись об отмене
+        $cancelled = \App\Models\CancelledExcursionDate::create([
+            'excursion_id' => $excursion->id,
+            'date_time' => $dateTime,
+        ]);
+
+        // Аннулируем все бронирования на эту дату и время
+        $normalizedDate = $dateTime->format('Y-m-d');
+        $normalizedTime = $dateTime->format('H:i');
+        
+        $bookings = \App\Models\Booking::where('excursion_id', $excursion->id)
+            ->where(function($query) use ($normalizedDate, $normalizedTime, $dateTime) {
+                $query->where(function($q) use ($normalizedDate, $normalizedTime) {
+                    // Проверяем по excursion_date и time
+                    $q->whereRaw('DATE(excursion_date) = ?', [$normalizedDate])
+                      ->whereRaw('TIME(time) = ?', [$normalizedTime]);
+                })->orWhere(function($q) use ($normalizedDate, $normalizedTime, $dateTime) {
+                    // Или по weekday и time (если нет конкретной даты)
+                    $q->whereNull('excursion_date')
+                      ->where('weekday', $dateTime->isoWeekday())
+                      ->whereRaw('TIME(time) = ?', [$normalizedTime]);
+                });
+            })
+            ->get();
+
+        $cancelledCount = 0;
+        foreach ($bookings as $booking) {
+            // Возвращаем деньги в кошелек
+            \App\Models\WalletTransaction::create([
+                'user_id' => $booking->booked_by,
+                'booking_id' => $booking->id,
+                'amount' => -$booking->price, // Отрицательная сумма = возврат
+                'description' => "Возврат за отмененную экскурсию",
+            ]);
+            
+            $booking->delete();
+            $cancelledCount++;
+        }
+
+        return response()->json([
+            'message' => 'Экскурсия отменена',
+            'cancelled_bookings_count' => $cancelledCount,
+            'data' => [
+                'id' => $cancelled->id,
+                'excursion_id' => $excursion->id,
+                'date_time' => $cancelled->date_time->toIso8601String(),
+            ],
+        ], 201);
+    }
+
+    /**
+     * Восстановить отмененную экскурсию
+     */
+    public function restoreDate(Request $request, $id, $cancelledDateId)
+    {
+        $user = $request->user();
+        $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
+        
+        if (!$isAdmin) {
+            abort(403, 'Only admins can restore excursions');
+        }
+
+        $cancelled = \App\Models\CancelledExcursionDate::where('excursion_id', $id)
+            ->findOrFail($cancelledDateId);
+
+        $cancelled->delete();
+
+        return response()->json([
+            'message' => 'Экскурсия восстановлена',
+        ], 200);
+    }
+
+    /**
+     * Получить список всех отмененных экскурсий
+     */
+    public function cancelledDates(Request $request)
+    {
+        $user = $request->user();
+        $isAdmin = $user->isSuperUser() || (int) $user->moonshine_user_role_id === 1;
+        
+        if (!$isAdmin) {
+            abort(403, 'Only admins can view cancelled dates');
+        }
+
+        $cancelledDates = CancelledExcursionDate::with('excursion')
+            ->orderBy('date_time', 'desc')
+            ->get()
+            ->map(function ($cancelled) {
+                return [
+                    'id' => $cancelled->id,
+                    'excursion_id' => $cancelled->excursion_id,
+                    'excursion_title' => $cancelled->excursion->title,
+                    'date_time' => $cancelled->date_time->toIso8601String(),
+                    'date' => $cancelled->date_time->format('Y-m-d'),
+                    'time' => $cancelled->date_time->format('H:i'),
+                    'created_at' => $cancelled->created_at->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'data' => $cancelledDates,
+        ], 200);
     }
 }

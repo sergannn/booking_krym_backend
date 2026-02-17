@@ -5,6 +5,7 @@ namespace App\Models;
 use MoonShine\Laravel\Models\MoonshineUser as BaseMoonshineUser;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MoonshineUserExtension extends BaseMoonshineUser
 {
@@ -27,6 +28,7 @@ class MoonshineUserExtension extends BaseMoonshineUser
         'name',
         'avatar',
         'plain_password',
+        'bus_id',
     ];
 
     /**
@@ -93,6 +95,22 @@ class MoonshineUserExtension extends BaseMoonshineUser
     public function getWalletBalanceAttribute(): float
     {
         return $this->walletTransactions()->sum('amount');
+    }
+
+    /**
+     * Связь с расчетами (settlements)
+     */
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(Settlement::class, 'seller_id');
+    }
+
+    /**
+     * Связь с автобусом (для водителей)
+     */
+    public function bus(): BelongsTo
+    {
+        return $this->belongsTo(Bus::class, 'bus_id');
     }
 }
 

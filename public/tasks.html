@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список задач - Экскурсии</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 150px;
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card.completed .number {
+            color: #28a745;
+        }
+
+        .stat-card.in-progress .number {
+            color: #ffc107;
+        }
+
+        .stat-card.pending .number {
+            color: #dc3545;
+        }
+
+        .stat-card .label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section.completed .section-title {
+            color: #28a745;
+            border-color: #28a745;
+        }
+
+        .section.in-progress .section-title {
+            color: #ffc107;
+            border-color: #ffc107;
+        }
+
+        .section.pending .section-title {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .task-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .task-item.completed {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .task-item.in-progress {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .task-item.pending {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .task-item h3 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .task-item p {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .task-item ul {
+            margin-top: 10px;
+            margin-left: 20px;
+            color: #495057;
+        }
+
+        .task-item ul li {
+            margin-bottom: 5px;
+        }
+
+        .category {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #495057;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 2px solid #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Список задач</h1>
+            <div class="subtitle">Система управления экскурсиями</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card completed">
+                <div class="number">13</div>
+                <div class="label">Выполнено</div>
+            </div>
+            <div class="stat-card in-progress">
+                <div class="number">2</div>
+                <div class="label">В процессе</div>
+            </div>
+            <div class="stat-card pending">
+                <div class="number">5</div>
+                <div class="label">Не выполнено</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Выполнено -->
+            <div class="section completed">
+                <div class="section-title">
+                    <span>✅</span>
+                    <span>Выполнено (13 задач)</span>
+                </div>
+                <ul class="task-list">
+                    <li class="task-item completed">
+                        <h3>1. Отменить экскурсию</h3>
+                        <p>Добавлена возможность отмены конкретной экскурсии на дату/время (боковое меню админа). При отмене бронирования аннулируются и создаются возвратные транзакции.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>2. Убрать значок сиденье (забронить место)</h3>
+                        <p>Иконка забронирования закомментирована в интерфейсе.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>3. Уменьшить билет</h3>
+                        <p>PDF билет уменьшен до четверти A4 страницы с соответствующими настройками шрифтов и отступов.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>4. Добавить название экскурсии в бронирование</h3>
+                        <p>В диалоге бронирования отображается название экскурсии вместо "Новое бронирование".</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>5. В списке в новых бронированиях добавить ТАБ (прошлые)</h3>
+                        <p>Добавлен таб "Прошедшие" для просмотра старых бронирований.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>6. Возможность сделать бронь на прошлое число</h3>
+                        <p>Реализовано через таб "Прошедшие" - можно бронировать экскурсии на прошедшие даты (до 30 дней назад).</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>7. Календарь в кошельке сортировать по дате экскурсии</h3>
+                        <p>Транзакции теперь сортируются и фильтруются по дате экскурсии, а не по дате продажи. Применено для админа, продавца и водителя.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>8. Поменять цвета чет/нечет в списках</h3>
+                        <p>Добавлен чередующийся фон для всех списков (верхний уровень и внутренние элементы) - серый/белый для лучшей читаемости.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>9. Расписание отображалось неверно</h3>
+                        <p>Исправлено отображение расписания в мобильном приложении. Теперь расписание берется из базы данных, а не из конфигурационного файла.</p>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>10. Убрать галочку "входные билеты", добавить льготные и сделать по категории (и писать цену)</h3>
+                        <ul>
+                            <li>Убран чекбокс "входные билеты"</li>
+                            <li>Добавлен тип пассажира "Льготный"</li>
+                            <li>Типы пассажиров разделены на категории: "Без входных" (Взрослый, Льготный) и "Со входными" (Взрослый, Детский, Пенсионер, Инвалид)</li>
+                            <li>Спеццена вынесена отдельно</li>
+                            <li>Цена отображается рядом с каждым типом пассажира</li>
+                            <li>Логика автоматически определяет наличие входного билета на основе выбранной категории</li>
+                        </ul>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>11. Расчетный лист продавцам</h3>
+                        <ul>
+                            <li>Добавлен раздел "Расчетные листы" в меню админа</li>
+                            <li>Возможность выбора продавца и фильтрации по датам</li>
+                            <li>Два таба: "Не рассчитано" и "Рассчитано"</li>
+                            <li>Возможность рассчитаться с продавцом (выборочно или все сразу)</li>
+                            <li>Возможность отменить расчет для отдельных продаж</li>
+                            <li>Календарь с цветовой индикацией статуса расчетов (зеленый - все рассчитано, красный - не рассчитано, оранжевый - частично)</li>
+                            <li>Отображение общей суммы за выбранный период</li>
+                        </ul>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>12. Водитель интерфейс: остановка, места, продавец, номера тел</h3>
+                        <ul>
+                            <li>✅ В интерфейсе водителя показывать остановку - <strong>РЕАЛИЗОВАНО</strong> (в разделе "Посадка пассажиров" группировка по остановкам)</li>
+                            <li>✅ Показывать места - <strong>РЕАЛИЗОВАНО</strong> (номер места отображается для каждого пассажира)</li>
+                            <li>✅ Показывать продавца (кто бронировал) - <strong>РЕАЛИЗОВАНО</strong> (имя продавца с цветовым индикатором)</li>
+                            <li>✅ Показывать номера телефонов - <strong>РЕАЛИЗОВАНО</strong> (телефон пассажира отображается с иконкой)</li>
+                            <li>✅ Показывать имя пассажира - <strong>РЕАЛИЗОВАНО</strong> (имя отображается для каждого места)</li>
+                            <li>✅ Счетчик занятых мест на остановке - <strong>РЕАЛИЗОВАНО</strong></li>
+                        </ul>
+                    </li>
+                    <li class="task-item completed">
+                        <h3>13. Добавить название экскурсии в бронировании (в списке)</h3>
+                        <p>Название экскурсии теперь отображается в списке бронирований в разделе "Продажи". Название показывается в заголовке карточки, а дата экскурсии и дата продажи - в подзаголовке.</p>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- В процессе -->
+            <div class="section in-progress">
+                <div class="section-title">
+                    <span>🔄</span>
+                    <span>В процессе / Требует уточнения (2 задачи)</span>
+                </div>
+                <ul class="task-list">
+                    <li class="task-item in-progress">
+                        <h3>1. Ошибка с назначением</h3>
+                        <p>Требуется найти и исправить ошибку утром (назначения). Требует дополнительного исследования.</p>
+                    </li>
+                    <li class="task-item in-progress">
+                        <h3>2. Цвет продавцу и имя в схеме рассадке ⚠️ Требует проверки</h3>
+                        <ul>
+                            <li>✅ Каждому продавцу присвоить свой цвет - <strong>РЕАЛИЗОВАНО</strong> (добавлена миграция, API endpoint, UI для выбора цвета)</li>
+                            <li>✅ Показывать имя продавца в схеме рассадки - <strong>РЕАЛИЗОВАНО</strong> (вместо "Занято" показывается имя продавца)</li>
+                            <li>✅ Показывать, кто бронировал место - <strong>РЕАЛИЗОВАНО</strong> (через booked_by_info)</li>
+                            <li>✅ Отображать цвет продавца в схеме рассадки - <strong>РЕАЛИЗОВАНО</strong> (места окрашиваются в цвет продавца)</li>
+                            <li>✅ Схема рассадки перенесена от водителя к админу - <strong>РЕАЛИЗОВАНО</strong></li>
+                            <li>✅ "Adult" переведено на русский ("Взрослый") - <strong>РЕАЛИЗОВАНО</strong></li>
+                            <li>✅ Убрано слово "остановка" из схемы - <strong>РЕАЛИЗОВАНО</strong></li>
+                        </ul>
+                        <p style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+                            <strong>⚠️ Статус:</strong> Реализовано, но требует проверки. Возможны проблемы с отображением цветов из-за кэширования данных или множественных запросов. Необходимо проверить работу в продакшене.
+                        </p>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Не выполнено -->
+            <div class="section pending">
+                <div class="section-title">
+                    <span>📋</span>
+                    <span>Не выполнено (5 задач)</span>
+                </div>
+
+                <div class="category">Бронирования и экскурсии</div>
+                <ul class="task-list">
+                    <li class="task-item pending">
+                        <h3>1. Поменять цвет дат в бронированиях и сделать цвета экскурсиям</h3>
+                        <ul>
+                            <li>Даты должны быть красными</li>
+                            <li>Разные экскурсии должны иметь разные цвета</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <div class="category">Расписание</div>
+                <ul class="task-list">
+                    <li class="task-item pending">
+                        <h3>3. Сделать дизайн расписания как в админке и возможность менять расписание</h3>
+                        <ul>
+                            <li>Привести дизайн экрана "Расписание" к единому стилю с админкой</li>
+                            <li>Добавить возможность редактирования расписания</li>
+                        </ul>
+                    </li>
+                    <li class="task-item pending">
+                        <h3>4. Подтянуть время остановок</h3>
+                        <p>Синхронизировать время остановок из базы данных.</p>
+                    </li>
+                </ul>
+
+
+                <div class="category">Финансы</div>
+                <ul class="task-list">
+                    <li class="task-item pending">
+                        <h3>8. Разбить остановки</h3>
+                        <p>Уточнить требование (возможно, имеется в виду группировка или разделение остановок в интерфейсе).</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Обновлено: <span id="date"></span></p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Всего задач: 20 | Выполнено: 13 (65%) | В процессе: 2 (10%) | Не выполнено: 5 (25%)</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('date').textContent = new Date().toLocaleDateString('ru-RU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    </script>
+</body>
+</html>

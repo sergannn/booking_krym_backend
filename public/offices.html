@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Офисы — Panfilius Digital</title>
+  <meta name="description" content="Офисы Panfilius Digital в США, Цюрихе, Москве и Санкт-Петербурге. Работаем по всему миру.">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a25;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border: #1e293b;
+      --success: #10b981;
+      --gradient-start: #6366f1;
+      --gradient-end: #8b5cf6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.3s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Page Header */
+    .page-header {
+      padding: 140px 0 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .page-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .page-header h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .page-header p {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* World Map Visual */
+    .world-visual {
+      padding: 40px 0;
+      text-align: center;
+    }
+
+    .globe-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .time-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 30px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      min-width: 140px;
+    }
+
+    .time-zone-flag {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .time-zone-city {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .time-zone-time {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-light);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .time-zone-label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    /* Offices Grid */
+    .offices-section {
+      padding: 60px 0 100px;
+    }
+
+    .offices-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+    }
+
+    .office-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .office-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(99, 102, 241, 0.1);
+    }
+
+    .office-image {
+      height: 200px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .office-image::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, var(--bg-card) 100%);
+    }
+
+    .office-image-usa {
+      background-image: url('https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?w=800&q=80');
+    }
+
+    .office-image-zurich {
+      background-image: url('https://images.unsplash.com/photo-1515488764276-beab7607c1e6?w=800&q=80');
+    }
+
+    .office-image-moscow {
+      background-image: url('https://images.unsplash.com/photo-1513326738677-b964603b136d?w=800&q=80');
+    }
+
+    .office-image-spb {
+      background-image: url('https://images.unsplash.com/photo-1556610961-2fecc5927173?w=800&q=80');
+    }
+
+    .office-content {
+      padding: 28px 32px 32px;
+    }
+
+    .office-flag {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .office-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .office-country {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .office-details {
+      list-style: none;
+    }
+
+    .office-details li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .office-details li:last-child {
+      border-bottom: none;
+    }
+
+    .office-details li span:first-child {
+      flex-shrink: 0;
+      width: 24px;
+      text-align: center;
+    }
+
+    .office-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 16px;
+    }
+
+    .office-badge-hq {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent-light);
+    }
+
+    /* Coverage Section */
+    .coverage {
+      padding: 80px 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .coverage-content {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .coverage h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
+    .coverage p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 40px;
+    }
+
+    .coverage-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .coverage-feature {
+      padding: 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .coverage-feature-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .coverage-feature h3 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+
+    .coverage-feature p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: 100px 0;
+      text-align: center;
+    }
+
+    .cta-section h2 {
+      font-size: 2rem;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 32px;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-inner span {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .offices-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .coverage-features {
+        grid-template-columns: 1fr;
+      }
+
+      nav {
+        display: none;
+      }
+
+      .globe-wrapper {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container header-inner">
+      <a href="company.html" class="logo">
+        <span class="logo-icon">P</span>
+        Panfilius Digital
+      </a>
+      <nav>
+        <a href="company.html#services">Услуги</a>
+        <a href="company.html#tech">Технологии</a>
+        <a href="company.html#consultation">Консультации</a>
+        <a href="offices.html" class="active">Офисы</a>
+      </nav>
+      <a href="company.html#consultation" class="btn btn-primary">Связаться</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container">
+        <h1>Наши офисы</h1>
+        <p>Четыре локации в разных часовых поясах — мы на связи, когда вам удобно</p>
+      </div>
+    </section>
+
+    <!-- Time Zones Visual -->
+    <section class="world-visual">
+      <div class="container">
+        <div class="globe-wrapper">
+          <div class="time-zone">
+            <span class="time-zone-flag">🇺🇸</span>
+            <span class="time-zone-city">Нью-Йорк</span>
+            <span class="time-zone-time" id="time-ny">--:--</span>
+            <span class="time-zone-label">UTC-5</span>
+          </div>
+          <div class="time-zone">
+            <span class="time-zone-flag">🇨🇭</span>
+            <span class="time-zone-city">Цюрих</span>
+            <span class="time-zone-time" id="time-zurich">--:--</span>
+            <span class="time-zone-label">UTC+1</span>
+          </div>
+          <div class="time-zone">
+            <span class="time-zone-flag">🇷🇺</span>
+            <span class="time-zone-city">Москва</span>
+            <span class="time-zone-time" id="time-moscow">--:--</span>
+            <span class="time-zone-label">UTC+3</span>
+          </div>
+          <div class="time-zone">
+            <span class="time-zone-flag">🇷🇺</span>
+            <span class="time-zone-city">Санкт-Петербург</span>
+            <span class="time-zone-time" id="time-spb">--:--</span>
+            <span class="time-zone-label">UTC+3</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Offices Grid -->
+    <section class="offices-section">
+      <div class="container">
+        <div class="offices-grid">
+          
+          <!-- USA Office -->
+          <div class="office-card">
+            <div class="office-image office-image-usa"></div>
+            <div class="office-content">
+              <div class="office-title">
+                <span class="office-flag">🇺🇸</span>
+                Нью-Йорк
+              </div>
+              <div class="office-country">Соединённые Штаты Америки</div>
+              <ul class="office-details">
+                <li>
+                  <span>📍</span>
+                  <span>350 Fifth Avenue, Suite 7820<br>New York, NY 10118</span>
+                </li>
+                <li>
+                  <span>📞</span>
+                  <span>+1 (212) 555-0147</span>
+                </li>
+                <li>
+                  <span>📧</span>
+                  <span>usa@panfilius.digital</span>
+                </li>
+                <li>
+                  <span>🕐</span>
+                  <span>Пн–Пт: 9:00 – 18:00 (EST)</span>
+                </li>
+              </ul>
+              <span class="office-badge office-badge-hq">🌟 Главный офис</span>
+            </div>
+          </div>
+
+          <!-- Zurich Office -->
+          <div class="office-card">
+            <div class="office-image office-image-zurich"></div>
+            <div class="office-content">
+              <div class="office-title">
+                <span class="office-flag">🇨🇭</span>
+                Цюрих
+              </div>
+              <div class="office-country">Швейцария</div>
+              <ul class="office-details">
+                <li>
+                  <span>📍</span>
+                  <span>Bahnhofstrasse 52<br>8001 Zürich</span>
+                </li>
+                <li>
+                  <span>📞</span>
+                  <span>+41 44 555 01 47</span>
+                </li>
+                <li>
+                  <span>📧</span>
+                  <span>zurich@panfilius.digital</span>
+                </li>
+                <li>
+                  <span>🕐</span>
+                  <span>Пн–Пт: 9:00 – 18:00 (CET)</span>
+                </li>
+              </ul>
+              <span class="office-badge">🇪🇺 Европейский офис</span>
+            </div>
+          </div>
+
+          <!-- Moscow Office -->
+          <div class="office-card">
+            <div class="office-image office-image-moscow"></div>
+            <div class="office-content">
+              <div class="office-title">
+                <span class="office-flag">🇷🇺</span>
+                Москва
+              </div>
+              <div class="office-country">Россия</div>
+              <ul class="office-details">
+                <li>
+                  <span>📍</span>
+                  <span>Пресненская наб., 12<br>Москва-Сити, башня «Федерация»</span>
+                </li>
+                <li>
+                  <span>📞</span>
+                  <span>+7 (495) 555-01-47</span>
+                </li>
+                <li>
+                  <span>📧</span>
+                  <span>moscow@panfilius.digital</span>
+                </li>
+                <li>
+                  <span>🕐</span>
+                  <span>Пн–Пт: 10:00 – 19:00 (MSK)</span>
+                </li>
+              </ul>
+              <span class="office-badge">🏢 Офис разработки</span>
+            </div>
+          </div>
+
+          <!-- SPB Office -->
+          <div class="office-card">
+            <div class="office-image office-image-spb"></div>
+            <div class="office-content">
+              <div class="office-title">
+                <span class="office-flag">🇷🇺</span>
+                Санкт-Петербург
+              </div>
+              <div class="office-country">Россия</div>
+              <ul class="office-details">
+                <li>
+                  <span>📍</span>
+                  <span>Невский проспект, 114–116<br>БЦ «Атриум»</span>
+                </li>
+                <li>
+                  <span>📞</span>
+                  <span>+7 (812) 555-01-47</span>
+                </li>
+                <li>
+                  <span>📧</span>
+                  <span>spb@panfilius.digital</span>
+                </li>
+                <li>
+                  <span>🕐</span>
+                  <span>Пн–Пт: 10:00 – 19:00 (MSK)</span>
+                </li>
+              </ul>
+              <span class="office-badge">💻 Центр разработки</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Coverage -->
+    <section class="coverage">
+      <div class="container">
+        <div class="coverage-content">
+          <h2>Глобальное покрытие</h2>
+          <p>Независимо от вашего местоположения, мы обеспечиваем качественный сервис и оперативную коммуникацию</p>
+          <div class="coverage-features">
+            <div class="coverage-feature">
+              <div class="coverage-feature-icon">🌍</div>
+              <h3>Работаем везде</h3>
+              <p>Клиенты из 15+ стран мира. Онлайн-встречи в любое удобное время.</p>
+            </div>
+            <div class="coverage-feature">
+              <div class="coverage-feature-icon">💬</div>
+              <h3>Мультиязычность</h3>
+              <p>Русский, английский, немецкий. Документация на языке клиента.</p>
+            </div>
+            <div class="coverage-feature">
+              <div class="coverage-feature-icon">⚡</div>
+              <h3>Быстрый отклик</h3>
+              <p>Ответ в течение 2 часов в рабочее время любого из офисов.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+      <div class="container">
+        <h2>Готовы обсудить проект?</h2>
+        <p>Выберите удобный офис или оставьте заявку — мы свяжемся с вами</p>
+        <a href="company.html#consultation" class="btn btn-primary">Оставить заявку →</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <span>© 2026 Panfilius Digital</span>
+      <div class="footer-links">
+        <a href="company.html">Главная</a>
+        <a href="company.html#services">Услуги</a>
+        <a href="company.html#consultation">Консультации</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Live clock for each timezone
+    function updateClocks() {
+      const now = new Date();
+      
+      // New York (UTC-5)
+      const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      document.getElementById('time-ny').textContent = ny.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      
+      // Zurich (UTC+1)
+      const zurich = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Zurich' }));
+      document.getElementById('time-zurich').textContent = zurich.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      
+      // Moscow (UTC+3)
+      const moscow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+      document.getElementById('time-moscow').textContent = moscow.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      
+      // SPB (UTC+3, same as Moscow)
+      document.getElementById('time-spb').textContent = moscow.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    updateClocks();
+    setInterval(updateClocks, 1000);
+  </script>
+
+</body>
+</html>

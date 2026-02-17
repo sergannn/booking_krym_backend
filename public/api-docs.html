@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Экскурсии</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f8fafc;
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header:hover {
+            background: #f1f5f9;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .endpoint-count {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .section-content {
+            padding: 20px;
+        }
+
+        .endpoint {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .endpoint-header {
+            padding: 15px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .endpoint-method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+
+        .method-get { background: #10b981; color: white; }
+        .method-post { background: #f59e0b; color: white; }
+        .method-put { background: #3b82f6; color: white; }
+        .method-delete { background: #ef4444; color: white; }
+        .method-patch { background: #8b5cf6; color: white; }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .endpoint-description {
+            margin-top: 8px;
+            color: #6b7280;
+        }
+
+        .endpoint-details {
+            padding: 15px;
+            background: white;
+        }
+
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .param-table th,
+        .param-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .param-table th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+        .param-required {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .code-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .response-example {
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-auth {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-admin {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .expand-icon {
+            transition: transform 0.2s;
+        }
+
+        .section.collapsed .expand-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section.collapsed .section-content {
+            display: none;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .endpoint-header {
+                padding: 10px;
+            }
+
+            .endpoint-details {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 API Документация</h1>
+            <p>Система управления экскурсиями</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="Поиск endpoints..." id="searchInput">
+        </div>
+
+        <!-- Authentication -->
+        <div class="section" data-category="auth">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">🔐 Аутентификация</div>
+                <div class="endpoint-count">3</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/login</span>
+                        <div class="endpoint-description">Вход в систему</div>
+                    </div>
+                    <div class="endpoint-details">
+                        <h4>Параметры:</h4>
+                        <table class="param-table">
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Тип</th>
+                                <th>Обязательный</th>
+                                <th>Описание</th>
+                            </tr>
+                            <tr>
+                                <td>email</td>
+                                <td>string</td>
+                                <td class="param-required">Да</td>
+                                <td>Email пользователя</td>
+                            </tr>
+                            <tr>
+                                <td>password</td>
+                                <td>string</td>
+                                <td class="param-required">Да</td>
+                                <td>Пароль</td>
+                            </tr>
+                        </table>
+                        <h4>Пример запроса:</h4>
+                        <div class="code-block">
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+                        </div>
+                        <h4>Пример ответа:</h4>
+                        <div class="response-example">
+{
+  "user": {...},
+  "token": "bearer_token_here"
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/logout</span>
+                        <div class="endpoint-description">Выход из системы</div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/user</span>
+                        <div class="endpoint-description">Получение данных текущего пользователя</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings -->
+        <div class="section" data-category="bookings">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">🎫 Бронирования</div>
+                <div class="endpoint-count">6</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/bookings</span>
+                        <div class="endpoint-description">Получение списка бронирований</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-details">
+                        <h4>Query параметры:</h4>
+                        <table class="param-table">
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Тип</th>
+                                <th>Описание</th>
+                            </tr>
+                            <tr>
+                                <td>page</td>
+                                <td>integer</td>
+                                <td>Номер страницы для пагинации</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/bookings</span>
+                        <div class="endpoint-description">Создание нового бронирования</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-details">
+                        <h4>Форматы запроса:</h4>
+                        <h5>Новый формат (массив мест):</h5>
+                        <div class="code-block">
+{
+  "excursion_id": 123,
+  "seats": [
+    {
+      "seat_number": 1,
+      "passenger_type": "adult",
+      "with_entry": true,
+      "customer_name": "Иван Иванов",
+      "customer_phone": "+7 (999) 123-45-67"
+    }
+  ],
+  "stop_id": 456,
+  "weekday": 1,
+  "time": "08:30",
+  "excursion_date": "2025-01-20"
+}
+                        </div>
+                        <h5>Старый формат:</h5>
+                        <div class="code-block">
+{
+  "excursion_id": 123,
+  "seat_numbers": [1, 2],
+  "passenger_type": "adult",
+  "customer_name": "Иван Иванов",
+  "customer_phone": "+7 (999) 123-45-67",
+  "stop_id": 456,
+  "weekday": 1,
+  "time": "08:30",
+  "excursion_date": "2025-01-20"
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/bookings/{id}/ticket-pdf</span>
+                        <div class="endpoint-description">Генерация PDF билета</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-details">
+                        <h4>Query параметры:</h4>
+                        <table class="param-table">
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Тип</th>
+                                <th>Описание</th>
+                            </tr>
+                            <tr>
+                                <td>ids[]</td>
+                                <td>array</td>
+                                <td>Массив ID бронирований для объединения в один билет</td>
+                            </tr>
+                        </table>
+                        <h4>Пример:</h4>
+                        <div class="code-block">
+GET /api/bookings/123/ticket-pdf?ids[]=123&ids[]=124
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/bookings/{id}</span>
+                        <div class="endpoint-description">Отмена бронирования</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-details">
+                        <h4>Тело запроса:</h4>
+                        <div class="code-block">
+{
+  "reason": "Причина отмены"
+}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/bookings/driver</span>
+                        <div class="endpoint-description">Бронирования для водителя/экскурсовода</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-path">/api/bookings/{id}/status</span>
+                        <div class="endpoint-description">Изменение статуса бронирования</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                            <span class="badge badge-admin" style="margin-left: 8px;">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Excursions -->
+        <div class="section" data-category="excursions">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">🏔️ Экскурсии</div>
+                <div class="endpoint-count">5</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/excursions</span>
+                        <div class="endpoint-description">Получение списка экскурсий</div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/excursions/{id}</span>
+                        <div class="endpoint-description">Получение деталей экскурсии</div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/excursions</span>
+                        <div class="endpoint-description">Создание новой экскурсии</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-path">/api/excursions/{id}</span>
+                        <div class="endpoint-description">Обновление экскурсии</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/excursions/{id}</span>
+                        <div class="endpoint-description">Удаление экскурсии</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div class="section" data-category="users">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">👥 Пользователи</div>
+                <div class="endpoint-count">4</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/users</span>
+                        <div class="endpoint-description">Получение списка пользователей</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/users</span>
+                        <div class="endpoint-description">Создание нового пользователя</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-path">/api/users/{id}</span>
+                        <div class="endpoint-description">Обновление пользователя</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/users/{id}</span>
+                        <div class="endpoint-description">Удаление пользователя</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wallet -->
+        <div class="section" data-category="wallet">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">💰 Кошелек</div>
+                <div class="endpoint-count">3</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/wallet/{userId}</span>
+                        <div class="endpoint-description">Получение баланса и транзакций пользователя</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/wallet/{userId}/withdraw</span>
+                        <div class="endpoint-description">Запрос на вывод средств</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/wallet/sales/{userId}</span>
+                        <div class="endpoint-description">Получение статистики продаж</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-auth">Требуется аутентификация</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settlements -->
+        <div class="section" data-category="settlements">
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">💸 Расчеты</div>
+                <div class="endpoint-count">2</div>
+            </div>
+            <div class="section-content">
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/settlements</span>
+                        <div class="endpoint-description">Получение списка расчетов</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/settlements/{userId}</span>
+                        <div class="endpoint-description">Создание расчета с пользователем</div>
+                        <div style="margin-top: 8px;">
+                            <span class="badge badge-admin">Только админ</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+
+            const icon = header.querySelector('.expand-icon');
+            if (icon) {
+                icon.style.transform = section.classList.contains('collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
+            }
+        }
+
+        // Поиск
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const sections = document.querySelectorAll('.section');
+
+            sections.forEach(section => {
+                const endpoints = section.querySelectorAll('.endpoint');
+                let hasVisibleEndpoints = false;
+
+                endpoints.forEach(endpoint => {
+                    const path = endpoint.querySelector('.endpoint-path').textContent.toLowerCase();
+                    const description = endpoint.querySelector('.endpoint-description').textContent.toLowerCase();
+
+                    if (path.includes(searchTerm) || description.includes(searchTerm)) {
+                        endpoint.style.display = 'block';
+                        hasVisibleEndpoints = true;
+                    } else {
+                        endpoint.style.display = 'none';
+                    }
+                });
+
+                section.style.display = hasVisibleEndpoints ? 'block' : 'none';
+            });
+        });
+
+        // Добавляем иконки сворачивания
+        document.querySelectorAll('.section-header').forEach(header => {
+            const icon = document.createElement('span');
+            icon.className = 'expand-icon';
+            icon.innerHTML = '▼';
+            icon.style.fontSize = '12px';
+            icon.style.marginLeft = '10px';
+            header.appendChild(icon);
+        });
+
+        // Сворачиваем все секции по умолчанию
+        document.querySelectorAll('.section').forEach(section => {
+            section.classList.add('collapsed');
+        });
+    </script>
+</body>
+</html>

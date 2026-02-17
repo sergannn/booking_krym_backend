@@ -125,11 +125,27 @@ class Excursion extends Model
     }
 
     /**
-     * Связь с внеплановыми датами экскурсии
+     * Связь с внеплановыми датами экскурсии (только неудаленные)
      */
     public function unscheduledDates(): HasMany
     {
+        return $this->hasMany(UnscheduledExcursionDate::class)->whereNull('deleted_at');
+    }
+
+    /**
+     * Связь со всеми внеплановыми датами экскурсии (включая удаленные)
+     */
+    public function allUnscheduledDates(): HasMany
+    {
         return $this->hasMany(UnscheduledExcursionDate::class);
+    }
+
+    /**
+     * Связь с отмененными датами экскурсий
+     */
+    public function cancelledDates(): HasMany
+    {
+        return $this->hasMany(CancelledExcursionDate::class);
     }
 
     /**
@@ -255,10 +271,11 @@ class Excursion extends Model
             'child' => 'Детский',
             'senior' => 'Пенсионер',
             'disabled' => 'Инвалид',
+            'concession' => 'Льготный',
             'special' => 'Спеццена',
         ];
 
-        $types = ['adult', 'child', 'senior', 'disabled', 'special'];
+        $types = ['adult', 'child', 'senior', 'disabled', 'special', 'concession'];
         $result = [];
 
         foreach ($types as $type) {

@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panfilius Digital — Веб и мобильная разработка</title>
+  <meta name="description" content="Разрабатываем веб-сервисы, мобильные приложения, автоматизируем бизнес-процессы. Офисы в США, Цюрихе, Москве и Санкт-Петербурге.">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a25;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border: #1e293b;
+      --success: #10b981;
+      --gradient-start: #6366f1;
+      --gradient-end: #8b5cf6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.3s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-card);
+      border-color: var(--accent);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .hero-badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, var(--text) 0%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-top: 80px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent-light);
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Sections */
+    section {
+      padding: 100px 0;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-header h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Services */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 24px;
+    }
+
+    .service-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+
+    .service-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+
+    .service-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--accent-glow);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .service-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    .service-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    .service-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .service-tag {
+      padding: 4px 12px;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--accent-light);
+    }
+
+    /* Technologies */
+    .tech-section {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 20px;
+    }
+
+    .tech-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.3s;
+    }
+
+    .tech-item:hover {
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+
+    .tech-item span:first-child {
+      font-size: 2rem;
+    }
+
+    .tech-item span:last-child {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Consultation */
+    .consultation {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border-radius: 24px;
+      padding: 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .consultation-content h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
+    .consultation-content p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .consultation-features {
+      list-style: none;
+      margin-bottom: 32px;
+    }
+
+    .consultation-features li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      color: var(--text-muted);
+    }
+
+    .consultation-features li::before {
+      content: '✓';
+      color: var(--success);
+      font-weight: bold;
+    }
+
+    .consultation-form {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .consultation-form h3 {
+      font-size: 1.25rem;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* Offices CTA */
+    .offices-cta {
+      text-align: center;
+      padding: 80px 0;
+    }
+
+    .offices-cta h2 {
+      font-size: 2rem;
+      margin-bottom: 16px;
+    }
+
+    .offices-cta p {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .offices-preview {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .office-mini {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .office-mini span:first-child {
+      font-size: 1.5rem;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 60px 0 30px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .footer-brand p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 16px;
+      max-width: 300px;
+    }
+
+    .footer-column h4 {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .footer-column ul {
+      list-style: none;
+    }
+
+    .footer-column li {
+      margin-bottom: 12px;
+    }
+
+    .footer-column a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+
+    .footer-column a:hover {
+      color: var(--text);
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 30px;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+      color: var(--text-dim);
+    }
+
+    .footer-social {
+      display: flex;
+      gap: 16px;
+    }
+
+    .footer-social a {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .footer-social a:hover {
+      border-color: var(--accent);
+      color: var(--accent-light);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .consultation {
+        grid-template-columns: 1fr;
+        padding: 40px 24px;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hero-stats {
+        gap: 30px;
+      }
+
+      nav {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-stats {
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .offices-preview {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container header-inner">
+      <a href="company.html" class="logo">
+        <span class="logo-icon">P</span>
+        Panfilius Digital
+      </a>
+      <nav>
+        <a href="#services">Услуги</a>
+        <a href="#tech">Технологии</a>
+        <a href="#consultation">Консультации</a>
+        <a href="offices.html">Офисы</a>
+      </nav>
+      <a href="#consultation" class="btn btn-primary">Связаться</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          Принимаем новые проекты
+        </div>
+        <h1>Создаём цифровые продукты,<br>которые работают</h1>
+        <p>Веб-сервисы, мобильные приложения, автоматизация и интеграции. От идеи до запуска — с командой, которая понимает бизнес.</p>
+        <div class="hero-buttons">
+          <a href="#consultation" class="btn btn-primary">Обсудить проект →</a>
+          <a href="#services" class="btn btn-outline">Наши услуги</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <div class="stat-value">50+</div>
+            <div class="stat-label">Проектов</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Офиса</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">24/7</div>
+            <div class="stat-label">Поддержка</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services -->
+    <section id="services">
+      <div class="container">
+        <div class="section-header">
+          <h2>Что мы делаем</h2>
+          <p>Полный цикл разработки: от проектирования до поддержки и развития вашего продукта</p>
+        </div>
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="service-icon">🌐</div>
+            <h3>Веб-разработка</h3>
+            <p>Сайты, веб-приложения, личные кабинеты, админ-панели. Современный стек, чистый код, высокая производительность.</p>
+            <div class="service-tags">
+              <span class="service-tag">Laravel</span>
+              <span class="service-tag">PHP</span>
+              <span class="service-tag">JavaScript</span>
+              <span class="service-tag">MySQL</span>
+              <span class="service-tag">PostgreSQL</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">📱</div>
+            <h3>Мобильные приложения</h3>
+            <p>Кроссплатформенные приложения для iOS и Android. Один код — два магазина. Публикация в App Store и Google Play.</p>
+            <div class="service-tags">
+              <span class="service-tag">Flutter</span>
+              <span class="service-tag">Dart</span>
+              <span class="service-tag">iOS</span>
+              <span class="service-tag">Android</span>
+              <span class="service-tag">Push-уведомления</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🗄️</div>
+            <h3>Базы данных и API</h3>
+            <p>Проектирование архитектуры данных, REST API, интеграции с внешними сервисами. Надёжно и масштабируемо.</p>
+            <div class="service-tags">
+              <span class="service-tag">REST API</span>
+              <span class="service-tag">MySQL</span>
+              <span class="service-tag">PostgreSQL</span>
+              <span class="service-tag">SQLite</span>
+              <span class="service-tag">Firebase</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🚀</div>
+            <h3>Деплой и DevOps</h3>
+            <p>Настройка серверов, CI/CD, мониторинг. Ваш проект будет работать стабильно и обновляться без простоев.</p>
+            <div class="service-tags">
+              <span class="service-tag">Linux</span>
+              <span class="service-tag">SSH</span>
+              <span class="service-tag">VPS</span>
+              <span class="service-tag">Git</span>
+              <span class="service-tag">CI/CD</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🤖</div>
+            <h3>Автоматизация и боты</h3>
+            <p>Telegram-боты, автоматизация процессов, парсинг данных, интеграция с CRM и внешними системами.</p>
+            <div class="service-tags">
+              <span class="service-tag">Telegram API</span>
+              <span class="service-tag">Playwright</span>
+              <span class="service-tag">Selenium</span>
+              <span class="service-tag">Python</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🗺️</div>
+            <h3>Карты и геосервисы</h3>
+            <p>Интеграция карт, геолокация, маршруты, кастомные слои и маркеры для вашего бизнеса.</p>
+            <div class="service-tags">
+              <span class="service-tag">Mapbox</span>
+              <span class="service-tag">OpenStreetMap</span>
+              <span class="service-tag">Геолокация</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🔐</div>
+            <h3>Интеграции и платежи</h3>
+            <p>Подключение платёжных систем, SMS-уведомлений, email-рассылок и любых внешних сервисов.</p>
+            <div class="service-tags">
+              <span class="service-tag">Stripe</span>
+              <span class="service-tag">ЮKassa</span>
+              <span class="service-tag">Firebase</span>
+              <span class="service-tag">Supabase</span>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">⚡</div>
+            <h3>AI-интеграции</h3>
+            <p>Внедрение искусственного интеллекта в ваши процессы: чат-боты, анализ данных, генерация контента.</p>
+            <div class="service-tags">
+              <span class="service-tag">OpenAI</span>
+              <span class="service-tag">Claude</span>
+              <span class="service-tag">LLM</span>
+              <span class="service-tag">ML</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Technologies -->
+    <section id="tech" class="tech-section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Технологии</h2>
+          <p>Используем проверенные инструменты для надёжных решений</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech-item">
+            <span>🐘</span>
+            <span>PHP / Laravel</span>
+          </div>
+          <div class="tech-item">
+            <span>🎯</span>
+            <span>Flutter / Dart</span>
+          </div>
+          <div class="tech-item">
+            <span>⚡</span>
+            <span>JavaScript</span>
+          </div>
+          <div class="tech-item">
+            <span>🐍</span>
+            <span>Python</span>
+          </div>
+          <div class="tech-item">
+            <span>🗄️</span>
+            <span>MySQL</span>
+          </div>
+          <div class="tech-item">
+            <span>🐘</span>
+            <span>PostgreSQL</span>
+          </div>
+          <div class="tech-item">
+            <span>🔥</span>
+            <span>Firebase</span>
+          </div>
+          <div class="tech-item">
+            <span>⚡</span>
+            <span>Supabase</span>
+          </div>
+          <div class="tech-item">
+            <span>🐧</span>
+            <span>Linux</span>
+          </div>
+          <div class="tech-item">
+            <span>🔀</span>
+            <span>Git</span>
+          </div>
+          <div class="tech-item">
+            <span>🍎</span>
+            <span>Xcode</span>
+          </div>
+          <div class="tech-item">
+            <span>🚀</span>
+            <span>Fastlane</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Consultation -->
+    <section id="consultation">
+      <div class="container">
+        <div class="consultation">
+          <div class="consultation-content">
+            <h2>Онлайн-консультации</h2>
+            <p>Не знаете, с чего начать? Нужна экспертная оценка проекта или помощь с техническим решением? Мы проводим онлайн-консультации для бизнеса и разработчиков.</p>
+            <ul class="consultation-features">
+              <li>Аудит существующего проекта</li>
+              <li>Выбор технологического стека</li>
+              <li>Оценка сроков и бюджета</li>
+              <li>Архитектурные решения</li>
+              <li>Code review и рекомендации</li>
+              <li>Помощь с деплоем и настройкой серверов</li>
+            </ul>
+            <p style="color: var(--accent-light); font-weight: 500;">Первая консультация — бесплатно</p>
+          </div>
+          <div class="consultation-form">
+            <h3>Оставить заявку</h3>
+            <form action="#" method="POST">
+              <div class="form-group">
+                <label>Имя</label>
+                <input type="text" name="name" required placeholder="Как к вам обращаться?">
+              </div>
+              <div class="form-group">
+                <label>Email или Telegram</label>
+                <input type="text" name="contact" required placeholder="email@example.com или @username">
+              </div>
+              <div class="form-group">
+                <label>Тип услуги</label>
+                <select name="service">
+                  <option value="">Выберите...</option>
+                  <option value="web">Веб-разработка</option>
+                  <option value="mobile">Мобильное приложение</option>
+                  <option value="automation">Автоматизация</option>
+                  <option value="consulting">Консультация</option>
+                  <option value="other">Другое</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Опишите задачу</label>
+                <textarea name="message" placeholder="Расскажите кратко о вашем проекте или вопросе..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">Отправить заявку →</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Offices CTA -->
+    <section class="offices-cta">
+      <div class="container">
+        <h2>Работаем по всему миру</h2>
+        <p>Офисы в четырёх городах, онлайн-коммуникация в любом часовом поясе</p>
+        <div class="offices-preview">
+          <div class="office-mini">
+            <span>🇺🇸</span>
+            <span>США</span>
+          </div>
+          <div class="office-mini">
+            <span>🇨🇭</span>
+            <span>Цюрих</span>
+          </div>
+          <div class="office-mini">
+            <span>🇷🇺</span>
+            <span>Москва</span>
+          </div>
+          <div class="office-mini">
+            <span>🇷🇺</span>
+            <span>Санкт-Петербург</span>
+          </div>
+        </div>
+        <a href="offices.html" class="btn btn-outline" style="margin-top: 32px;">Подробнее об офисах →</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="company.html" class="logo">
+            <span class="logo-icon">P</span>
+            Panfilius Digital
+          </a>
+          <p>Разрабатываем цифровые продукты для бизнеса. От идеи до запуска и поддержки.</p>
+        </div>
+        <div class="footer-column">
+          <h4>Услуги</h4>
+          <ul>
+            <li><a href="#services">Веб-разработка</a></li>
+            <li><a href="#services">Мобильные приложения</a></li>
+            <li><a href="#services">Автоматизация</a></li>
+            <li><a href="#consultation">Консультации</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>Компания</h4>
+          <ul>
+            <li><a href="offices.html">Офисы</a></li>
+            <li><a href="#tech">Технологии</a></li>
+            <li><a href="course-landing.html">Обучение</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>Контакты</h4>
+          <ul>
+            <li><a href="mailto:hello@panfilius.ru">hello@panfilius.ru</a></li>
+            <li><a href="https://t.me/panfilius">Telegram</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Panfilius Digital. Все права защищены.</span>
+        <div class="footer-social">
+          <a href="https://t.me/panfilius" title="Telegram">💬</a>
+          <a href="https://github.com/panfilius" title="GitHub">🐙</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

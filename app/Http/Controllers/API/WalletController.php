@@ -76,21 +76,24 @@ class WalletController extends Controller
             ],
             'total_sales' => $totalSales,
             'bookings' => $bookings->map(function ($booking) {
+                // Используем дату из бронирования (excursion_date) или вычисляем через аксессор
+                $excursionDateTime = $booking->excursion_date; // Это аксессор, который возвращает правильную дату
+                
                 return [
                     'id' => $booking->id,
                     'excursion' => [
                         'id' => $booking->excursion->id,
                         'title' => $booking->excursion->title,
-                        'date_time' => $booking->excursion->date_time,
+                        'date_time' => $excursionDateTime?->toISOString(),
                     ],
                     'customer_name' => $booking->customer_name,
                     'customer_phone' => $booking->customer_phone,
                     'passenger_type' => $booking->passenger_type,
                     'price' => $booking->price,
                     'stop' => $booking->stop ? [
-                        'id' => $booking->stop->id,
-                        'name' => $booking->stop->name,
-                    ] : null,
+                            'id' => $booking->stop->id,
+                            'name' => $booking->stop->name,
+                        ] : null,
                     'booked_at' => $booking->booked_at,
                 ];
             })
@@ -236,13 +239,30 @@ class WalletController extends Controller
             $bookings = $excursion->bookings;
             
             // Группируем бронирования по дате экскурсии
+            // Для правильной группировки используем реальное значение excursion_date из БД
+            // Если его нет, используем аксессор для вычисления даты
             $bookingsByDate = $bookings->groupBy(function ($booking) {
-                // Используем excursion_date, если есть, иначе пытаемся определить из weekday/time
-                if ($booking->excursion_date) {
-                    return $booking->excursion_date->format('Y-m-d');
+                // Сначала пытаемся получить реальное значение из БД
+                $rawExcursionDate = $booking->getRawOriginal('excursion_date');
+                $bookingTime = $booking->time;
+                
+                if ($rawExcursionDate) {
+                    // Если есть реальное значение в БД - используем его
+                    $dateOnly = is_string($rawExcursionDate) ? substr($rawExcursionDate, 0, 10) : $rawExcursionDate->format('Y-m-d');
+                    $normalizedTime = is_string($bookingTime)
+                        ? substr($bookingTime, 0, 5)
+                        : ($bookingTime ? $bookingTime->format('H:i') : '00:00');
+                    return $dateOnly . ' ' . $normalizedTime;
                 }
-                // Если нет excursion_date, используем booked_at как fallback
-                return $booking->booked_at ? $booking->booked_at->format('Y-m-d') : 'unknown';
+                
+                // Если нет реального значения, используем аксессор (он вычисляет дату)
+                $excursionDate = $booking->excursion_date; // Это аксессор
+                if ($excursionDate) {
+                    return $excursionDate->format('Y-m-d H:i');
+                }
+                
+                // Если нет даты, используем booked_at как fallback
+                return $booking->booked_at ? $booking->booked_at->format('Y-m-d H:i') : 'unknown';
             });
             
             // Для каждой даты считаем прибыль отдельно
@@ -284,6 +304,7 @@ class WalletController extends Controller
                 $excursionDate = null;
                 if ($dateKey !== 'unknown') {
                     try {
+                        // Парсим дату и время из ключа (формат: Y-m-d H:i)
                         $excursionDate = \Carbon\Carbon::parse($dateKey);
                     } catch (\Exception $e) {
                         // Если не удалось распарсить, используем date_time экскурсии

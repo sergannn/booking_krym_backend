@@ -77,6 +77,12 @@ class Booking extends Model
         return $this->hasMany(WalletTransaction::class);
     }
 
+    public function settlements()
+    {
+        return $this->belongsToMany(Settlement::class, 'settlement_booking')
+            ->withTimestamps();
+    }
+
     /**
      * Дата/время экскурсии для отображения
      * ВАЖНО: Этот аксессор переопределяет стандартный доступ к excursion_date
